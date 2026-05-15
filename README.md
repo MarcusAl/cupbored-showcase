@@ -1,6 +1,6 @@
 # cupbored.ai
 
-An AI-powered ingredient detection and recipe matching platform. Snap a photo of ingredients, and it uses Anthropic's Claude Vision to identify them, then surfaces trending community matches with fuzzy search, bookmarking, and cuisine preferences.
+An AI-powered ingredient detection and recipe matching platform. Snap a photo of ingredients — optionally adding your own — and it uses Anthropic's Claude Vision to identify them, then surfaces trending community matches with fuzzy search, bookmarking, and cuisine preferences.
 
 > The source code is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
@@ -42,23 +42,23 @@ cupbored.ai/
 ```
 ┌─────────────┐     ┌──────────────────────┐     ┌─────────────────┐
 │  User snaps │────▶│  ScanProcessingJob   │────▶│  Match created  │
-│  a photo    │     │  (Claude Vision AI)  │     │  (public/private)│
-└─────────────┘     └──────────────────────┘     └─────────────────┘
-                              │                           │
-                    ┌─────────▼─────────┐        ┌───────▼────────┐
-                    │  ScanIngredients  │        │  Explore page  │
-                    │  (name, category, │        │  (trending,    │
-                    │   confidence)     │        │   search,      │
-                    └───────────────────┘        │   bookmarks)   │
-                                                 └────────────────┘
+│  a photo +  │     │  (Claude Vision AI   │     │  (public/private)│
+│  ingredients│     │   + manual input)    │     └─────────────────┘
+└─────────────┘     └──────────────────────┘             │
+                              │                  ┌───────▼────────┐
+                    ┌─────────▼─────────┐        │  Explore page  │
+                    │  ScanIngredients  │        │  (trending,    │
+                    │  (AI-detected +   │        │   search,      │
+                    │   manual, deduped)│        │   bookmarks)   │
+                    └───────────────────┘        └────────────────┘
 ```
 
-1. User uploads an image via **Scans** endpoint
+1. User uploads an image via **Scans** endpoint, optionally including manual ingredient names (max 10, profanity-filtered)
 2. **ScanProcessingJob** dispatches to the AI service pipeline:
    - `Scans::DetectIngredients` — sends image to Claude Vision, parses structured JSON response
    - `Scans::ValidateDetection` — validates the image contains food/ingredients
-   - `Scans::ProcessImage` — orchestrates detection, validation, and ingredient persistence
-3. Detected ingredients are stored as **ScanIngredients** (name, raw_name, category, confidence)
+   - `Scans::ProcessImage` — orchestrates detection, merges manual ingredients (deduped by name), handles state transitions
+3. Ingredients are stored as **ScanIngredients** — AI-detected ingredients retain their category and confidence; manual ingredients are saved as `other` with confidence `1.0`
 4. User publishes a **Match** from a completed scan to share with the community
 5. Community **explores** matches via trending scores, fuzzy ingredient search, and bookmarks
 
@@ -75,7 +75,7 @@ All business logic lives in service objects following an `ApplicationService` ba
 
 ## API Design
 
-All endpoints are versioned under `/api/v1/` with Bearer token authentication.
+All endpoints are versioned under `/api/v1/` with Bearer token authentication. Responses follow a consistent contract: `{ "data": ... }` for success, `{ "errors": [...] }` for errors (always an array), and `head :no_content` for destroy actions.
 
 ### Authentication
 
@@ -96,7 +96,7 @@ Authorization: Bearer eyJ...
 
 | Endpoint | Methods | Description |
 |---|---|---|
-| `/api/v1/scans` | GET, POST | Upload images for AI ingredient detection |
+| `/api/v1/scans` | GET, POST | Upload images + optional manual ingredients for AI detection |
 | `/api/v1/matches` | GET, POST | Publish scans and explore community matches |
 | `/api/v1/bookmarks` | POST, DELETE | Save/unsave matches |
 | `/api/v1/profile/cuisine_preferences` | GET, PUT | Manage cuisine preference list |
@@ -119,7 +119,7 @@ GET /api/v1/matches?min_saves=5
 
 # Paginated responses
 → {
-    "matches": [{ "id": "...", "ingredients": [...], "saves_count": 12, "trending_score": 8.5 }],
+    "data": [{ "id": "...", "ingredients": [...], "saves_count": 12, "trending_score": 8.5 }],
     "pagination": { "page": 1, "pages": 5, "count": 47 }
   }
 ```
@@ -134,9 +134,9 @@ User
 ├── has_many :bookmarks
 └── has_many :cuisine_preferences
 
-Scan (status enum: pending → detecting → completed/failed)
+Scan (status enum: uploading → detecting → completed/failed)
 ├── has_one_attached :image
-├── has_many :scan_ingredients (name, raw_name, category, confidence)
+├── has_many :scan_ingredients (AI-detected + manual, deduped by name)
 └── has_one :match
 
 Match (public boolean, saves_count counter cache, trending_score)
