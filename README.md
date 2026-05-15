@@ -181,7 +181,7 @@ GitHub Actions runs on every PR and push to main:
 
 ## API Documentation
 
-Interactive API docs are available via Swagger UI at `/api-docs` when the server is running. The OpenAPI spec is auto-generated from rswag request specs, ensuring documentation stays in sync with the actual API behaviour.
+The full OpenAPI 3.0 spec is available at [`openapi.yaml`](openapi.yaml). You can view it interactively by pasting the raw file URL into [Swagger Editor](https://editor.swagger.io).
 
 ## Planned
 
