@@ -181,7 +181,7 @@ GitHub Actions runs on every PR and push to main:
 
 ## API Documentation
 
-The full OpenAPI 3.0 spec is available at [`openapi.yaml`](openapi.yaml). You can view it interactively by pasting the raw file URL into [Swagger Editor](https://editor.swagger.io).
+The full OpenAPI 3.0 spec is available at [`openapi.yaml`](openapi.yaml). [View it interactively in Swagger Editor →](https://editor.swagger.io/?url=https://raw.githubusercontent.com/MarcusAl/cupbored-showcase/main/openapi.yaml)
 
 ## Planned
 
