@@ -210,6 +210,19 @@ Terraform manages the full AWS stack:
 - **SSM** — Secrets management (Rails master key, Anthropic API key)
 - **VPC** — Private subnets for database and Redis, public for API
 
+## Security
+
+### Rate Limiting
+
+Application-level rate limiting via `rack-attack` at the Rack middleware layer (no AWS WAF — zero added cost):
+
+- **Per-IP throttling** — global request limits and stricter limits on auth endpoints
+- **Per-token burst protection** — prevents scan endpoint abuse without database lookups in middleware
+- **Redis-backed IP blocklist** — block individual IPs with configurable TTL, no deploy required
+- **Per-user daily scan quota** — configurable via Redis at runtime
+
+The design is **fail-open** — a Redis outage degrades rate limiting but does not take the API offline. Trusted proxy configuration ensures the real client IP is used for throttling behind the ALB.
+
 ## CI Pipeline
 
 GitHub Actions runs on every PR and push to main:
