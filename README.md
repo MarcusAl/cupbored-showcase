@@ -14,9 +14,11 @@ An AI-powered ingredient detection and recipe matching platform. Snap a photo of
 | **Background Jobs** | Sidekiq + Redis |
 | **Storage** | Active Storage with AWS S3 (image uploads) |
 | **Auth** | Token-based authentication (`has_secure_password` + signed session tokens) |
+| **Email** | Postmark (transactional email via `postmark-rails`) |
 | **API Docs** | OpenAPI 3.0 via rswag (auto-generated from request specs) |
 | **Infrastructure** | Terraform → AWS (EC2, RDS, ElastiCache, ALB, ECR, S3) |
-| **CI** | GitHub Actions (RSpec, RuboCop, Brakeman security scanning) |
+| **Deployment** | Kamal 2 → ECR + EC2 (zero-downtime Docker deploys) |
+| **CI/CD** | GitHub Actions (RSpec, RuboCop, Brakeman) → auto-deploy to production on merge |
 | **Local Infra** | LocalStack for AWS service emulation |
 
 ## Architecture
@@ -146,8 +148,10 @@ Authorization: Bearer eyJ...
 | `/api/v1/profile/cuisine_suggestions` | POST | Suggest new cuisines for the platform |
 | `/api/v1/profile/user` | PATCH | Update display name |
 | `/api/v1/sessions` | GET, DELETE | Session management |
-| `/api/v1/password` | PATCH | Password updates |
-| `/api/v1/identity/email` | PATCH | Email updates with re-verification |
+| `/api/v1/password` | PATCH | Password updates (authenticated) |
+| `/api/v1/identity/email` | PATCH | Email updates with automatic re-verification |
+| `/api/v1/identity/email_verification` | GET, POST | Email verification (token-based) |
+| `/api/v1/identity/password_reset` | POST, PATCH | Password reset flow (token-based, 20-min expiry) |
 
 ### Explore Page (Matches Index)
 
@@ -217,14 +221,14 @@ Jobs are idempotent with automatic retries on transient API failures (timeout, c
 
 Terraform manages the full AWS stack:
 
-- **EC2** — containerised Rails + Sidekiq (Docker)
-- **RDS** — PostgreSQL 15 with automated snapshots
+- **EC2** — Rails + Sidekiq deployed via Kamal 2 (zero-downtime Docker deploys)
+- **RDS** — PostgreSQL 15 with automated snapshots, deletion protection in staging/production
 - **ElastiCache** — Redis for Sidekiq and caching
-- **S3** — Image storage via Active Storage
-- **ALB** — Application Load Balancer with health checks
-- **ECR** — Docker image registry
-- **SSM** — Secrets management (Rails master key, Anthropic API key)
-- **VPC** — Private subnets for database and Redis, public for API
+- **S3** — Image storage via Active Storage, encrypted ALB access logs
+- **ALB** — TLS termination, health checks, forwards to Kamal proxy
+- **ECR** — Docker image registry (scoped IAM policies)
+- **SSM** — Secrets management (DB credentials as SecureString parameters)
+- **VPC** — Private subnets for database and Redis, public for API, scoped security groups
 
 ## Security
 
@@ -241,11 +245,12 @@ The design is **fail-open** — a Redis outage degrades rate limiting but does n
 
 ## CI Pipeline
 
-GitHub Actions runs on every PR and push to main:
+GitHub Actions runs on every PR and merge to main:
 
 1. **Lint** — RuboCop on changed files only (fast feedback)
 2. **Security** — Brakeman static analysis for Rails vulnerabilities
-3. **Test** — Full RSpec suite against PostgreSQL + Redis (320+ specs)
+3. **Test** — Full RSpec suite against PostgreSQL + Redis (350+ specs)
+4. **Deploy** — Automatic Kamal deploy to production on merge to main
 
 ## API Documentation
 
