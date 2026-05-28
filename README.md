@@ -1,6 +1,6 @@
 # cupbored.ai
 
-An AI-powered ingredient detection and recipe matching platform. Snap a photo of ingredients — optionally adding your own — and it uses Anthropic's Claude Vision to identify them, then automatically matches them against a database of recipes using IDF-weighted ingredient scoring. Users select course types (main, side, etc.) and get ranked recipe recommendations with cuisine preference boosts. A background recipe pipeline discovers top YouTube cooking videos, parses transcripts with Claude Haiku into structured recipes with difficulty ratings and flavor profiles, and indexes them for matching.
+An AI-powered ingredient detection and recipe matching platform. Snap a photo of ingredients — optionally adding your own — and it uses Anthropic's Claude Vision to identify them, then automatically matches them against a database of recipes using IDF-weighted ingredient scoring. Users select course types (main, side, etc.) and get ranked recipe recommendations with cuisine preference boosts. A background recipe pipeline discovers top YouTube cooking videos across 19 cuisines, filters by channel quality, parses transcripts with Claude Haiku into structured recipes with difficulty ratings and flavor profiles, and indexes them for matching.
 
 > The source code is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
@@ -29,7 +29,7 @@ cupbored.ai/
 │   ├── app/
 │   │   ├── controllers/api/v1/   # Versioned API controllers
 │   │   ├── models/               # ActiveRecord models with PG enums
-│   │   ├── clients/              # External API clients (YouTube Data API)
+│   │   ├── clients/              # External API clients (YouTube Data API, transcript scraping)
 │   │   ├── services/             # Service objects (ApplicationService pattern)
 │   │   │   ├── scans/            # AI pipeline (DetectIngredients, ProcessImage, etc.)
 │   │   │   ├── recipes/          # Recipe pipeline (DiscoverVideos, ParseTranscript, etc.)
@@ -76,27 +76,28 @@ cupbored.ai/
 ### Recipe Pipeline (Background Discovery)
 
 ```
-┌──────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
-│  RecipeDiscovery │────▶│  Per-video pipeline   │────▶│  Recipe created │
-│  Job (cron)      │     │  (fetch transcript,   │     │  (with ingredients,│
-│  19 cuisines     │     │   parse with Haiku,   │     │   steps, timing) │
-└──────────────────┘     │   validate, store)    │     └─────────────────┘
-                         └──────────────────────┘
-                                   │ fail
-                         ┌─────────▼─────────┐
-                         │  Redis skip set   │
-                         │  (30-day TTL)     │
-                         └───────────────────┘
+┌──────────────────┐     ┌──────────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│  RecipeDiscovery │────▶│  Channel quality      │────▶│  Per-video pipeline  │────▶│  Recipe created │
+│  Job (cron)      │     │  filter + dedup       │     │  (transcript scrape, │     │  (with ingredients,│
+│  19 cuisines,    │     │  (Redis-cached)        │     │   parse with Haiku,  │     │   steps, timing) │
+│  paginated       │     └──────────────────────┘     │   validate, store)   │     └─────────────────┘
+└──────────────────┘                                   └──────────────────────┘
+                                                                │ fail
+                                                      ┌─────────▼─────────┐
+                                                      │  Redis skip set   │
+                                                      │  (90-day TTL)     │
+                                                      └───────────────────┘
 ```
 
-1. **RecipeDiscoveryJob** runs on a cron schedule, searching YouTube across 19 cuisine categories
-2. **DiscoverVideos** batch-filters results — rejects already-imported videos (single `WHERE IN` query), previously skipped videos (Redis pipeline), and low-view-count videos
-3. **RecipeParsingJob** processes each video:
-   - `FetchTranscript` — retrieves captions via YouTube Data API
-   - `ParseTranscript` — sends transcript to Claude Haiku, extracts structured JSON (title, ingredients, steps, timing)
+1. **RecipeDiscoveryJob** runs on a cron schedule, paginating through YouTube search results across all 19 cuisine categories with exhaustion detection
+2. **FilterByChannel** applies channel quality thresholds (subscriber count, channel age) with Redis-cached channel data to avoid redundant API calls
+3. **DiscoverVideos** batch-filters results — rejects already-imported videos (single `WHERE IN` query), previously skipped videos (Redis pipeline), and low-view-count videos
+4. **RecipeParsingJob** processes each video with a daily AI cost cap:
+   - Transcript scraping via a dedicated client (no YouTube API quota consumed)
+   - `ParseTranscript` — sends transcript to Claude Haiku, extracts structured JSON (title, ingredients, steps, timing, flavor profile)
    - `ValidateParsedData` — validates LLM output, distinguishing parse errors (malformed JSON) from content errors (invalid cuisine, missing ingredients)
    - `CreateFromParsed` — transactional insert of recipe + ingredients
-4. Failed videos are tracked in Redis with 30-day TTL to prevent reprocessing
+5. Failed videos are tracked in Redis with 90-day TTL to prevent reprocessing
 
 ### Services Layer
 
@@ -108,11 +109,11 @@ All business logic lives in service objects following an `ApplicationService` ba
 | `Scans::ValidateDetection` | Ensures scan contains valid food items (rejects non-food images) |
 | `Scans::ProcessImage` | Orchestrates the full detection pipeline with state transitions |
 | `Scans::PurgeImage` | Cleans up stored images on scan failure |
-| `Recipes::DiscoverVideos` | YouTube search with batch DB/Redis filtering (no N+1) |
+| `Recipes::DiscoverVideos` | Batch DB/Redis filtering — dedup, skip-set, view count gate (no N+1) |
+| `Recipes::FilterByChannel` | Channel quality filtering with Redis-cached subscriber/age data |
 | `Recipes::ParseTranscript` | Claude Haiku transcript → structured recipe JSON |
 | `Recipes::ValidateParsedData` | LLM output validation with parse/content error distinction |
 | `Recipes::CreateFromParsed` | Transactional recipe + ingredient creation |
-| `Recipes::FetchTranscript` | YouTube transcript retrieval via Data API |
 | `Recipes::RecomputeIdf` | Batch SQL recomputation of IDF scores across all ingredients |
 | `Matches::FindRecipes` | IDF-weighted recipe scoring with core gating and cuisine boost |
 | `Matches::AllocateCourses` | Distributes recipe slots across user-selected courses |
@@ -249,7 +250,7 @@ GitHub Actions runs on every PR and merge to main:
 
 1. **Lint** — RuboCop on changed files only (fast feedback)
 2. **Security** — Brakeman static analysis for Rails vulnerabilities
-3. **Test** — Full RSpec suite against PostgreSQL + Redis (350+ specs)
+3. **Test** — Full RSpec suite against PostgreSQL + Redis (390+ specs)
 4. **Deploy** — Automatic Kamal deploy to production on merge to main
 
 ## API Documentation
