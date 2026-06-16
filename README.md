@@ -1,268 +1,104 @@
-# cupbored.ai
+# cupbored.app
 
-An AI-powered ingredient detection and recipe matching platform. Snap a photo of ingredients — optionally adding your own — and it uses Anthropic's Claude Vision to identify them, then automatically matches them against a database of recipes using IDF-weighted ingredient scoring. Users select course types (main, side, etc.) and get ranked recipe recommendations with cuisine preference boosts. A background recipe pipeline discovers top YouTube cooking videos across 19 cuisines, filters by channel quality, parses transcripts with Claude Haiku into structured recipes with difficulty ratings and flavor profiles, and indexes them for matching.
+A Rails 8 API for AI-powered ingredient detection and recipe matching. Background pipeline ingests source videos through discovery → channel quality filtering → transcript fetch → asynchronous batched LLM parsing → output validation → source-span grounding → catalog persistence.
 
-> The source code is in a private repository. This showcase highlights the architecture, tech stack, and API design.
+> Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| **API** | Ruby on Rails 8.1 (API-only mode) |
-| **AI** | Anthropic Claude Vision API (ingredient detection), Claude Haiku (transcript parsing) |
-| **Database** | PostgreSQL with UUID primary keys, `pg_trgm` for fuzzy search |
-| **Background Jobs** | Sidekiq + Redis |
-| **Storage** | Active Storage with AWS S3 (image uploads) |
-| **Auth** | Token-based authentication (`has_secure_password` + signed session tokens) |
-| **Email** | Postmark (transactional email via `postmark-rails`) |
+| **API** | Ruby on Rails 8.1 (API-only) |
+| **AI** | LLM (image ingredient detection, asynchronous batch transcript parsing) |
+| **Database** | PostgreSQL — UUID PKs, `pg_trgm`, native enums, counter caches |
+| **Background Jobs** | Sidekiq + Redis (sidekiq-cron, sidekiq-throttled) |
+| **Storage** | Active Storage on AWS S3 |
+| **Auth** | Token-based (`has_secure_password` + signed session tokens) |
+| **Email** | Third-party transactional provider |
 | **API Docs** | OpenAPI 3.0 via rswag (auto-generated from request specs) |
-| **Infrastructure** | Terraform → AWS (EC2, RDS, ElastiCache, ALB, ECR, S3) |
-| **Deployment** | Kamal 2 → ECR + EC2 (zero-downtime Docker deploys) |
-| **CI/CD** | GitHub Actions (RSpec, RuboCop, Brakeman) → auto-deploy to production on merge |
-| **Local Infra** | LocalStack for AWS service emulation |
+| **Infrastructure** | Terraform → AWS (EC2, RDS, ElastiCache, ALB, ECR, S3, SSM, VPC) |
+| **Deployment** | Kamal 2 — zero-downtime Docker deploys to EC2 |
+| **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
+| **Local Infra** | LocalStack for AWS emulation |
 
 ## Architecture
 
 ```
-cupbored.ai/
-├── api/                  # Rails 8.1 API-only application
-│   ├── app/
-│   │   ├── controllers/api/v1/   # Versioned API controllers
-│   │   ├── models/               # ActiveRecord models with PG enums
-│   │   ├── clients/              # External API clients (YouTube Data API, transcript scraping)
-│   │   ├── services/             # Service objects (ApplicationService pattern)
-│   │   │   ├── scans/            # AI pipeline (DetectIngredients, ProcessImage, etc.)
-│   │   │   ├── recipes/          # Recipe pipeline (DiscoverVideos, ParseTranscript, etc.)
-│   │   │   └── matches/          # Recipe matching (FindRecipes, AllocateCourses)
-│   │   └── jobs/                 # ScanProcessingJob, ScanMatchingJob, RecipeDiscoveryJob, etc.
-│   └── swagger/                  # OpenAPI spec (auto-generated)
-├── terraform-setup/      # Full AWS infrastructure as code
-└── mobile/               # React Native + Expo (planned)
+api/
+├── controllers/api/v1/   # Versioned API endpoints
+├── models/               # ActiveRecord (PG enums + UUID PKs) + immutable value objects
+├── types/                # Custom ActiveRecord::Type for jsonb ⇄ value-object casting
+├── clients/              # Provider-agnostic external API wrappers
+├── services/             # ApplicationService objects (one public method per class)
+└── jobs/                 # Sidekiq jobs (find AR object, delegate to service)
 ```
 
-## Core Domain
+### Request pipeline
 
-### Scan → Detect → Match → Explore
+User upload → background detection job → background matching job → ranked recommendations. Each stage runs in its own Sidekiq queue with explicit state transitions on the parent record.
 
-```
-┌─────────────┐     ┌──────────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  User snaps │────▶│  ScanProcessingJob   │────▶│  ScanMatchingJob │────▶│  Match created   │
-│  a photo +  │     │  (Claude Vision AI   │     │  (IDF-weighted   │     │  (ranked recipes,│
-│  ingredients│     │   + manual input)    │     │   recipe match)  │     │   public toggle) │
-│  + courses  │     └──────────────────────┘     └──────────────────┘     └─────────────────┘
-└─────────────┘              │                            │                        │
-                   ┌─────────▼─────────┐       ┌─────────▼─────────┐    ┌─────────▼────────┐
-                   │  ScanIngredients  │       │  Course allocation │    │  Explore page    │
-                   │  (AI-detected +   │       │  + cuisine boost   │    │  (trending,      │
-                   │   manual, deduped)│       │  + core gate       │    │   search,        │
-                   └───────────────────┘       └───────────────────┘    │   bookmarks)     │
-                                                                        └──────────────────┘
-```
-
-1. User uploads an image via **Scans** endpoint, optionally including manual ingredient names and desired course types (main, side, appetizer, etc.)
-2. **ScanProcessingJob** dispatches to the AI service pipeline:
-   - `Scans::DetectIngredients` — sends image to Claude Vision, parses structured JSON response
-   - `Scans::ValidateDetection` — validates the image contains food/ingredients
-   - `Scans::ProcessImage` — orchestrates detection, merges manual ingredients (deduped by name), transitions scan to `detected`
-3. Ingredients are stored as **ScanIngredients** — AI-detected ingredients retain their category and confidence; manual ingredients are saved as `other` with confidence `1.0`
-4. **ScanMatchingJob** runs automatically after detection:
-   - Allocates recipe slots across selected courses
-   - Scores recipes using IDF-weighted ingredient overlap (core ingredients weighted higher)
-   - Applies a core ingredient gate — recipes must have sufficient core ingredient coverage to qualify
-   - Boosts recipes matching the user's cuisine preferences
-   - Creates a **Match** with up to 5 ranked recipes
-5. Users can toggle matches public/private. Community **explores** public matches via trending scores, fuzzy ingredient search, and bookmarks
-
-### Recipe Pipeline (Background Discovery)
+### Background ingest pipeline (LLM batch)
 
 ```
-┌──────────────────┐     ┌──────────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
-│  RecipeDiscovery │────▶│  Channel quality      │────▶│  Per-video pipeline  │────▶│  Recipe created │
-│  Job (cron)      │     │  filter + dedup       │     │  (transcript scrape, │     │  (with ingredients,│
-│  19 cuisines,    │     │  (Redis-cached)        │     │   parse with Haiku,  │     │   steps, timing) │
-│  paginated       │     └──────────────────────┘     │   validate, store)   │     └─────────────────┘
-└──────────────────┘                                   └──────────────────────┘
-                                                                │ fail
-                                                      ┌─────────▼─────────┐
-                                                      │  Redis skip set   │
-                                                      │  (90-day TTL)     │
-                                                      └───────────────────┘
+Discovery (cron) ──▶ Channel filter ──▶ Transcript fetch ──▶ PendingParse buffer
+                                                                    │
+                                                                    ▼
+                                  Async LLM batch submit (cron) ──▶ Poll + retrieve (cron)
+                                                                    │
+                                                                    ▼
+                                       Validate ──▶ Ground source spans ──▶ Persist
 ```
 
-1. **RecipeDiscoveryJob** runs on a cron schedule, paginating through YouTube search results across all 19 cuisine categories with exhaustion detection
-2. **FilterByChannel** applies channel quality thresholds (subscriber count, channel age) with Redis-cached channel data to avoid redundant API calls
-3. **DiscoverVideos** batch-filters results — rejects already-imported videos (single `WHERE IN` query), previously skipped videos (Redis pipeline), and low-view-count videos
-4. **RecipeParsingJob** processes each video with a daily AI cost cap:
-   - Transcript scraping via a dedicated client (no YouTube API quota consumed)
-   - `ParseTranscript` — sends transcript to Claude Haiku, extracts structured JSON (title, ingredients, steps, timing, flavor profile)
-   - `ValidateParsedData` — validates LLM output, distinguishing parse errors (malformed JSON) from content errors (invalid cuisine, missing ingredients)
-   - `CreateFromParsed` — transactional insert of recipe + ingredients
-5. Failed videos are tracked in Redis with 90-day TTL to prevent reprocessing
+- **Cost**: batching cuts LLM spend ~50% vs synchronous calls.
+- **Quality gate**: every emitted `source_span` is substring-matched against the original transcript before persistence. Hallucinated ingredients/steps fail grounding and never reach the catalog.
+- **Multilingual**: prompt is translation-aware — output text fields are normalised regardless of source language while `source_span` stays verbatim, so grounding still validates.
+- **Tunable**: enqueue spacing is a Redis-backed knob — operators can throttle without redeploying.
 
-### Services Layer
+## Service Layer
 
-All business logic lives in service objects following an `ApplicationService` base class with `.call(...)`:
+Business logic lives in `ApplicationService` objects with a single public `.call(...)` method (≤3 public methods per class, no god classes). Examples:
 
-| Service | Responsibility |
-|---|---|
-| `Scans::DetectIngredients` | Claude Vision API integration, JSON parsing, schema validation |
-| `Scans::ValidateDetection` | Ensures scan contains valid food items (rejects non-food images) |
-| `Scans::ProcessImage` | Orchestrates the full detection pipeline with state transitions |
-| `Scans::PurgeImage` | Cleans up stored images on scan failure |
-| `Recipes::DiscoverVideos` | Batch DB/Redis filtering — dedup, skip-set, view count gate (no N+1) |
-| `Recipes::FilterByChannel` | Channel quality filtering with Redis-cached subscriber/age data |
-| `Recipes::ParseTranscript` | Claude Haiku transcript → structured recipe JSON |
-| `Recipes::ValidateParsedData` | LLM output validation with parse/content error distinction |
-| `Recipes::CreateFromParsed` | Transactional recipe + ingredient creation |
-| `Recipes::RecomputeIdf` | Batch SQL recomputation of IDF scores across all ingredients |
-| `Matches::FindRecipes` | IDF-weighted recipe scoring with core gating and cuisine boost |
-| `Matches::AllocateCourses` | Distributes recipe slots across user-selected courses |
+- **Scans** — `DetectIngredients`, `ProcessImage`, `PurgeImage`
+- **Recipes** — `DiscoverVideos`, `FilterByChannel`, `ParseTranscript`, `ValidateParsedData`, `VerifyGrounding`, `ProcessBatchResult`, `CreateFromParsed`, `RecomputeIdf`
+- **Matches** — `FindRecipes` (IDF-weighted scoring with core gating + preference boost), `AllocateCourses`
 
 ## API Design
 
-All endpoints are versioned under `/api/v1/` with Bearer token authentication. Responses follow a consistent contract: `{ "data": ... }` for success, `{ "errors": [...] }` for errors (always an array), and `head :no_content` for destroy actions.
-
-### Authentication
-
-```bash
-# Sign up
-POST /api/v1/sign_up
-{ "email": "user@example.com", "password": "..." }
-
-# Sign in → returns session token
-POST /api/v1/sign_in
-→ { "data": { "session": {...}, "token": "eyJ..." } }
-
-# Use token for authenticated requests
-Authorization: Bearer eyJ...
-```
-
-### Core Resources
-
-| Endpoint | Methods | Description |
-|---|---|---|
-| `/api/v1/scans` | GET, POST | Upload images + optional manual ingredients + courses for AI detection |
-| `/api/v1/matches` | GET, PATCH | Explore community matches, toggle public/private |
-| `/api/v1/recipes/:id` | GET | Full recipe detail with flavor profile and ingredients |
-| `/api/v1/bookmarks` | POST, DELETE | Save/unsave matches |
-| `/api/v1/profile/cuisine_preferences` | GET, PUT | Manage cuisine preference list |
-| `/api/v1/profile/cuisine_suggestions` | POST | Suggest new cuisines for the platform |
-| `/api/v1/profile/user` | PATCH | Update display name |
-| `/api/v1/sessions` | GET, DELETE | Session management |
-| `/api/v1/password` | PATCH | Password updates (authenticated) |
-| `/api/v1/identity/email` | PATCH | Email updates with automatic re-verification |
-| `/api/v1/identity/email_verification` | GET, POST | Email verification (token-based) |
-| `/api/v1/identity/password_reset` | POST, PATCH | Password reset flow (token-based, 20-min expiry) |
-
-### Explore Page (Matches Index)
-
-```bash
-# Fuzzy ingredient search (pg_trgm trigram matching)
-GET /api/v1/matches?q=tomato
-
-# Sort options: trending (default), most_saved, latest
-GET /api/v1/matches?sort=most_saved
-
-# Filter by minimum bookmark count
-GET /api/v1/matches?min_saves=5
-
-# Paginated responses
-→ {
-    "data": [{ "id": "...", "ingredient_count": 5, "recipe_count": 3, "saves_count": 12 }],
-    "pagination": { "page": 1, "pages": 5, "count": 47 }
-  }
-```
-
-## Data Model
-
-```
-User
-├── has_many :scans
-│   └── has_many :scan_ingredients
-├── has_many :matches (through scans)
-├── has_many :bookmarks
-└── has_many :cuisine_preferences
-
-Scan (status enum: uploading → detecting → detected → matching → completed/failed)
-├── has_one_attached :image
-├── has_many :scan_ingredients (AI-detected + manual, deduped by name)
-└── has_one :match
-
-Match (public boolean, saves_count counter cache, trending_score)
-├── has_many :match_recipes (relevance_score, rank 1-5)
-├── has_many :recipes (through match_recipes)
-└── has_many :bookmarks
-
-Recipe (source: youtube, popularity_score, course enum, difficulty 1-3)
-├── flavor profile (sweet/salty/sour/spicy/bitter/umami — 6 dimensions, 0-100)
-├── external_video_id, channel_name, view_count, like_count
-└── has_many :recipe_ingredients (name, quantity, unit, category, core flag, idf_score)
-```
-
-**PostgreSQL Features:**
-- Native enums for scan status, rejection reasons, and recipe courses (`create_enum`)
-- `pg_trgm` extension for trigram-based fuzzy ingredient search
-- Counter cache on `saves_count` for efficient sorting
-- UUID primary keys on all tables
-- Composite indexes on recipes (cuisine, source, external_video_id)
-
-## Background Processing
-
-| Job | Queue | Purpose |
-|---|---|---|
-| `ScanProcessingJob` | `:image_processing` | Runs AI detection pipeline after image upload |
-| `ScanMatchingJob` | `:default` | IDF-weighted recipe matching after ingredient detection |
-| `RecipeDiscoveryJob` | `:cron` | Discovers YouTube recipe videos across 19 cuisines, recomputes IDF |
-| `RecipeParsingJob` | `:recipe_processing` | Per-video transcript fetch → parse → validate → store |
-| `UpdateTrendingCountsJob` | `:cron` | Recalculates trending scores from 7-day bookmark window |
-
-Jobs are idempotent with automatic retries on transient API failures (timeout, connection errors).
-
-## Infrastructure
-
-Terraform manages the full AWS stack:
-
-- **EC2** — Rails + Sidekiq deployed via Kamal 2 (zero-downtime Docker deploys)
-- **RDS** — PostgreSQL 15 with automated snapshots, deletion protection in staging/production
-- **ElastiCache** — Redis for Sidekiq and caching
-- **S3** — Image storage via Active Storage, encrypted ALB access logs
-- **ALB** — TLS termination, health checks, forwards to Kamal proxy
-- **ECR** — Docker image registry (scoped IAM policies)
-- **SSM** — Secrets management (DB credentials as SecureString parameters)
-- **VPC** — Private subnets for database and Redis, public for API, scoped security groups
-
-## Security
-
-### Rate Limiting
-
-Application-level rate limiting via `rack-attack` at the Rack middleware layer (no AWS WAF — zero added cost):
-
-- **Per-IP throttling** — global request limits and stricter limits on auth endpoints
-- **Per-token burst protection** — prevents scan endpoint abuse without database lookups in middleware
-- **Redis-backed IP blocklist** — block individual IPs with configurable TTL, no deploy required
-- **Per-user daily scan quota** — configurable via Redis at runtime
-
-The design is **fail-open** — a Redis outage degrades rate limiting but does not take the API offline. Trusted proxy configuration ensures the real client IP is used for throttling behind the ALB.
-
-## CI Pipeline
-
-GitHub Actions runs on every PR and merge to main:
-
-1. **Lint** — RuboCop on changed files only (fast feedback)
-2. **Security** — Brakeman static analysis for Rails vulnerabilities
-3. **Test** — Full RSpec suite against PostgreSQL + Redis (390+ specs)
-4. **Deploy** — Automatic Kamal deploy to production on merge to main
-
-## API Documentation
+Versioned under `/api/v1/` with Bearer token auth. Consistent response shape: `{ "data": ... }` for success, `{ "errors": [...] }` for failures, `head :no_content` for destroys. Pagination via `pagy`.
 
 **[Browse the interactive API docs →](https://marcusal.github.io/cupbored-showcase/)**
 
-The full OpenAPI 3.0 spec is also available at [`openapi.yaml`](openapi.yaml).
+## Data Model
+
+Native PG enums, UUID primary keys on every table, counter caches on hot read columns, `pg_trgm` for trigram fuzzy search, composite indexes on lookup paths. Cascade rules enforced at the database, not Rails. State transitions for long-running operations live in enum columns rather than booleans.
+
+A layer of immutable value objects (Ruby `Data`) wraps parsed external/AI payloads — each is the single source of truth for one shape, owning its own coercion and validation so raw primitives never leak across service boundaries; one round-trips through a `jsonb` column via a custom `ActiveRecord::Type`.
+
+## Background Processing
+
+Seven Sidekiq jobs across `:image_processing`, `:recipe_processing`, `:default`, `:mailers`, and `:cron` queues. Jobs find AR objects by ID then delegate to services. All jobs are idempotent with automatic retries on transient external failures only (timeout, connection errors) — never on logical errors.
+
+## Infrastructure
+
+Terraform manages the full AWS stack: EC2 + RDS Postgres + ElastiCache Redis + ALB + ECR + S3 + SSM SecureString secrets + scoped VPC. Kamal handles container orchestration. HCP Terraform Cloud for production workspace state.
+
+## Security
+
+- Application-level rate limiting via `rack-attack` (per-IP throttling, per-token burst protection, Redis-backed IP blocklist, per-user daily quota), fail-open under Redis outage
+- Trusted proxy configuration for accurate client IP behind ALB
+- IDOR prevention enforced via scoped queries (`current_user.association` + `.sole` lookups)
+- SSM SecureString for all secrets, scoped IAM `ssm:GetParameter` per parameter ARN
+- TLS termination at ALB, private subnets for RDS + Redis, no public DB access
+- Static analysis on every PR — zero Brakeman warnings policy, no Semgrep exceptions
+
+## CI Pipeline
+
+GitHub Actions on every PR + merge: RuboCop (full codebase), Brakeman (zero warnings), Bundler Audit, full RSpec suite against real Postgres + Redis (~490 specs), Bullet detects N+1s, auto-deploy to production on merge to main.
 
 ## Planned
 
 - React Native mobile app (Expo + TypeScript)
-- OpenAPI contract sync between Rails and mobile via `openapi-typescript`
+- OpenAPI contract sync via `openapi-typescript`
 
 ## Contact
 
