@@ -15,7 +15,7 @@ A Rails 8 API for AI-powered ingredient detection and recipe matching. Backgroun
 | **Storage** | Active Storage on AWS S3 |
 | **Auth** | Token-based (`has_secure_password` + signed session tokens) |
 | **Email** | Third-party transactional provider |
-| **API Docs** | OpenAPI 3.0 via rswag (auto-generated from request specs) |
+| **API Docs** | OpenAPI 3.0, generated from request specs via rspec-openapi |
 | **Infrastructure** | Terraform → AWS (EC2, RDS, ElastiCache, ALB, ECR, S3, SSM, VPC) |
 | **Deployment** | Kamal 2 — zero-downtime Docker deploys to EC2 |
 | **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
