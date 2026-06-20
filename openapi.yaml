@@ -546,6 +546,177 @@ paths:
             text/html:
               schema:
                 type: string
+  "/api/v1/oauth/apple":
+    post:
+      summary: apple
+      tags:
+      - Api::V1::Oauth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identity_token:
+                  type: string
+                nonce:
+                  type: string
+              required:
+              - identity_token
+              - nonce
+      responses:
+        '201':
+          description: creates a session for a verified Apple identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          created_at:
+                            type: string
+                          expires_at:
+                            type: string
+                          ip_address:
+                            type: string
+                          updated_at:
+                            type: string
+                          user_agent:
+                            nullable: true
+                          user_id:
+                            type: string
+                        required:
+                        - id
+                        - created_at
+                        - expires_at
+                        - ip_address
+                        - updated_at
+                        - user_agent
+                        - user_id
+                      token:
+                        type: string
+                    required:
+                    - session
+                    - token
+                required:
+                - data
+        '401':
+          description: rejects an invalid token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+        '422':
+          description: rejects an identity whose email already has a password account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/oauth/google":
+    post:
+      summary: google
+      tags:
+      - Api::V1::Oauth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identity_token:
+                  type: string
+              required:
+              - identity_token
+      responses:
+        '201':
+          description: creates a session for a verified Google identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          created_at:
+                            type: string
+                          expires_at:
+                            type: string
+                          ip_address:
+                            type: string
+                          updated_at:
+                            type: string
+                          user_agent:
+                            nullable: true
+                          user_id:
+                            type: string
+                        required:
+                        - id
+                        - created_at
+                        - expires_at
+                        - ip_address
+                        - updated_at
+                        - user_agent
+                        - user_id
+                      token:
+                        type: string
+                    required:
+                    - session
+                    - token
+                required:
+                - data
+        '401':
+          description: rejects an invalid token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+        '422':
+          description: rejects an identity whose email already has a password account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
   "/api/v1/password":
     patch:
       summary: update
