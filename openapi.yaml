@@ -905,6 +905,26 @@ paths:
                 required:
                 - errors
   "/api/v1/profile/user":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Profile::User
+      responses:
+        '204':
+          description: deletes an oauth user without a password challenge
+        '401':
+          description: keeps the account on an incorrect challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
     patch:
       summary: update
       tags:
