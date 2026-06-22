@@ -84,7 +84,7 @@ Terraform manages the full AWS stack: EC2 + RDS Postgres + ElastiCache Redis + A
 
 ## Security
 
-- Application-level rate limiting via `rack-attack` (per-IP throttling, per-token burst protection, Redis-backed IP blocklist, per-user daily quota), fail-open under Redis outage
+- Application-level rate limiting via `rack-attack` (per-IP throttling, per-account login throttle, per-token burst protection, Redis-backed IP blocklist, per-user daily quota; standard `RateLimit-*` / `Retry-After` headers), fail-open under Redis outage
 - Trusted proxy configuration for accurate client IP behind ALB
 - IDOR prevention enforced via scoped queries (`current_user.association` + `.sole` lookups)
 - SSM SecureString for all secrets, scoped IAM `ssm:GetParameter` per parameter ARN
