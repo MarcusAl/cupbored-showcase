@@ -763,6 +763,8 @@ paths:
                         type: string
                       verified:
                         type: boolean
+                      canonical_email:
+                        type: string
                     required:
                     - password_digest
                     - email
@@ -1115,7 +1117,7 @@ paths:
               - image
       responses:
         '201':
-          description: allows the request when Redis is unavailable
+          description: increments the global counter on a successful scan
           content:
             application/json:
               schema:
@@ -1166,7 +1168,7 @@ paths:
                 required:
                 - errors
         '429':
-          description: uses Redis-configured quota when set
+          description: returns 429 when the global cap is hit
           content:
             application/json:
               schema:
@@ -1532,7 +1534,8 @@ paths:
                 required:
                 - data
         '400':
-          description: rejects an incomplete registration
+          description: rejects a Gmail alias of an existing account without creating
+            a second user
           content:
             application/json:
               schema:
