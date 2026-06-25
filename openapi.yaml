@@ -25,7 +25,7 @@ paths:
               - match_id
       responses:
         '201':
-          description: creates a bookmark wrapped in data key
+          description: allows a user to bookmark their own private match
           content:
             application/json:
               schema:
@@ -43,6 +43,12 @@ paths:
                     - match_id
                 required:
                 - data
+        '404':
+          description: returns 404 when bookmarking another user private match
+          content:
+            text/html:
+              schema:
+                type: string
         '422':
           description: rejects duplicate bookmarks with errors array
           content:
@@ -389,7 +395,7 @@ paths:
           type: string
       responses:
         '200':
-          description: returns match detail with ingredients and recipes
+          description: returns match detail with scan image, ingredients, and recipes
           content:
             application/json:
               schema:
@@ -426,17 +432,23 @@ paths:
                               type: string
                             thumbnail_url:
                               nullable: true
+                              type: string
                             community_rating:
                               nullable: true
+                              type: number
+                              format: float
                             community_ratings_count:
                               type: integer
                             total_time_minutes:
                               type: integer
                             servings:
                               nullable: true
+                              type: integer
                             difficulty:
                               type: integer
                             rank:
+                              type: integer
+                            like_count:
                               type: integer
                           required:
                           - id
@@ -448,6 +460,10 @@ paths:
                           - servings
                           - difficulty
                           - rank
+                      scan_image_url:
+                        type: string
+                      scan_id:
+                        type: string
                     required:
                     - id
                     - public
@@ -534,6 +550,8 @@ paths:
                               type: integer
                             rank:
                               type: integer
+                            like_count:
+                              type: integer
                           required:
                           - id
                           - title
@@ -544,6 +562,10 @@ paths:
                           - servings
                           - difficulty
                           - rank
+                      scan_image_url:
+                        type: string
+                      scan_id:
+                        type: string
                     required:
                     - id
                     - public
@@ -1000,7 +1022,152 @@ paths:
           type: string
       responses:
         '200':
-          description: returns flavor profile and ingredients
+          description: returns your_rating when the user has rated the recipe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      cuisine:
+                        type: string
+                      course:
+                        type: string
+                      difficulty:
+                        type: integer
+                      flavor_profile:
+                        type: object
+                        properties:
+                          sweet:
+                            type: integer
+                          salty:
+                            type: integer
+                          sour:
+                            type: integer
+                          spicy:
+                            type: integer
+                          bitter:
+                            type: integer
+                          umami:
+                            type: integer
+                        required:
+                        - sweet
+                        - salty
+                        - sour
+                        - spicy
+                        - bitter
+                        - umami
+                      ingredients:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            quantity:
+                              type: string
+                            unit:
+                              type: string
+                            core:
+                              type: boolean
+                          required:
+                          - name
+                          - quantity
+                          - unit
+                          - core
+                      steps:
+                        type: array
+                        items:
+                          type: string
+                      thumbnail_url:
+                        nullable: true
+                        type: string
+                      channel_name:
+                        type: string
+                      prep_time_minutes:
+                        nullable: true
+                        type: integer
+                      cook_time_minutes:
+                        nullable: true
+                        type: integer
+                      servings:
+                        nullable: true
+                        type: integer
+                      community_rating:
+                        type: number
+                        format: float
+                      community_ratings_count:
+                        type: integer
+                      like_count:
+                        type: integer
+                      view_count:
+                        type: integer
+                      external_video_id:
+                        type: string
+                      your_rating:
+                        nullable: true
+                        type: integer
+                    required:
+                    - id
+                    - title
+                    - description
+                    - cuisine
+                    - course
+                    - difficulty
+                    - flavor_profile
+                    - ingredients
+                    - steps
+                    - thumbnail_url
+                    - channel_name
+                    - prep_time_minutes
+                    - cook_time_minutes
+                    - servings
+                required:
+                - data
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: returns 404 for a recipe linked to another users match
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/recipes/{id}/rating":
+    put:
+      summary: rating
+      tags:
+      - Api::V1::Recipe
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: string
+              required:
+              - value
+      responses:
+        '200':
+          description: rates an accessible recipe and returns your_rating in the response
           content:
             application/json:
               schema:
@@ -1075,6 +1242,18 @@ paths:
                         nullable: true
                       servings:
                         nullable: true
+                      community_rating:
+                        nullable: true
+                      community_ratings_count:
+                        type: integer
+                      like_count:
+                        type: integer
+                      view_count:
+                        type: integer
+                      external_video_id:
+                        type: string
+                      your_rating:
+                        type: integer
                     required:
                     - id
                     - title
@@ -1090,6 +1269,12 @@ paths:
                     - prep_time_minutes
                     - cook_time_minutes
                     - servings
+                    - community_rating
+                    - community_ratings_count
+                    - like_count
+                    - view_count
+                    - external_video_id
+                    - your_rating
                 required:
                 - data
         '401':
@@ -1099,11 +1284,24 @@ paths:
               schema:
                 type: string
         '404':
-          description: returns 404 for a recipe linked to another users match
+          description: returns 404 for a recipe not in the users matches
           content:
             text/html:
               schema:
                 type: string
+        '422':
+          description: returns 422 for an out-of-range value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
   "/api/v1/scans":
     post:
       summary: create
@@ -1146,6 +1344,8 @@ paths:
                       rejection_reason:
                         nullable: true
                       ingredients:
+                        nullable: true
+                      match_id:
                         nullable: true
                     required:
                     - id
@@ -1219,7 +1419,7 @@ paths:
           type: string
       responses:
         '200':
-          description: returns ingredients when completed
+          description: returns ingredients and match_id when completed
           content:
             application/json:
               schema:
@@ -1254,6 +1454,9 @@ paths:
                           - raw_name
                           - category
                           - confidence
+                      match_id:
+                        nullable: true
+                        type: string
                     required:
                     - id
                     - status
