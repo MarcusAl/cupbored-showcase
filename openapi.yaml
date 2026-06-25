@@ -347,6 +347,19 @@ paths:
                 required:
                 - data
                 - pagination
+        '403':
+          description: returns 403 with suspended message when account is banned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
       parameters:
       - name: min_saves
         in: query
