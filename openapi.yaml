@@ -9,6 +9,95 @@ servers:
   description: Production
 paths:
   "/api/v1/bookmarks":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Bookmark
+      responses:
+        '200':
+          description: does not trigger N+1 queries when returning multiple matches
+            with recipes and ingredients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        scan_id:
+                          type: string
+                        scan_image_url:
+                          type: string
+                        ingredient_count:
+                          type: integer
+                        recipe_count:
+                          type: integer
+                        saves_count:
+                          type: integer
+                        created_at:
+                          type: string
+                        user_display_name:
+                          nullable: true
+                        public:
+                          type: boolean
+                        ingredients:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                nullable: true
+                                type: string
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                      required:
+                      - id
+                      - scan_id
+                      - scan_image_url
+                      - ingredient_count
+                      - recipe_count
+                      - saves_count
+                      - created_at
+                      - user_display_name
+                      - public
+                      - ingredients
+                      - recipes
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
     post:
       summary: create
       tags:
@@ -307,7 +396,8 @@ paths:
       - Api::V1::Match
       responses:
         '200':
-          description: sorts by latest
+          description: returns matches with ANY recipe meeting ANY of the selected
+            flavor axes >= 30
           content:
             application/json:
               schema:
@@ -329,6 +419,38 @@ paths:
                         saves_count:
                           type: integer
                         created_at:
+                          type: string
+                        user_display_name:
+                          nullable: true
+                          type: string
+                        public:
+                          type: boolean
+                        ingredients:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                nullable: true
+                                type: string
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                        scan_id:
                           type: string
                       required:
                       - id
@@ -367,6 +489,30 @@ paths:
                 required:
                 - errors
       parameters:
+      - name: cuisines
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: flavors
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: max_difficulty
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: min_recipes
+        in: query
+        required: false
+        schema:
+          type: integer
       - name: min_saves
         in: query
         required: false
@@ -395,7 +541,7 @@ paths:
           type: string
       responses:
         '200':
-          description: returns match detail with scan image, ingredients, and recipes
+          description: returns 200 when the owner requests their own private match
           content:
             application/json:
               schema:
@@ -464,6 +610,11 @@ paths:
                         type: string
                       scan_id:
                         type: string
+                      user_display_name:
+                        nullable: true
+                        type: string
+                      saved:
+                        type: boolean
                     required:
                     - id
                     - public
@@ -474,7 +625,7 @@ paths:
                 required:
                 - data
         '404':
-          description: returns 404 for another users match
+          description: returns 404 when a non-owner requests a private match
           content:
             text/html:
               schema:
@@ -566,6 +717,10 @@ paths:
                         type: string
                       scan_id:
                         type: string
+                      user_display_name:
+                        nullable: true
+                      saved:
+                        type: boolean
                     required:
                     - id
                     - public
@@ -941,6 +1096,100 @@ paths:
                       type: string
                 required:
                 - errors
+  "/api/v1/profile/matches":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Profile::Match
+      responses:
+        '200':
+          description: does not trigger N+1 queries when returning multiple matches
+            with recipes and ingredients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        scan_image_url:
+                          type: string
+                        ingredient_count:
+                          type: integer
+                        recipe_count:
+                          type: integer
+                        saves_count:
+                          type: integer
+                        created_at:
+                          type: string
+                        user_display_name:
+                          nullable: true
+                          type: string
+                        public:
+                          type: boolean
+                        ingredients:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                nullable: true
+                                type: string
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                        scan_id:
+                          type: string
+                      required:
+                      - id
+                      - scan_image_url
+                      - ingredient_count
+                      - recipe_count
+                      - saves_count
+                      - created_at
+                      - user_display_name
+                      - public
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '401':
+          description: returns 401 when unauthenticated
+          content:
+            text/plain:
+              schema:
+                type: string
   "/api/v1/profile/user":
     delete:
       summary: destroy
@@ -962,6 +1211,52 @@ paths:
                       type: string
                 required:
                 - errors
+    get:
+      summary: show
+      tags:
+      - Api::V1::Profile::User
+      responses:
+        '200':
+          description: does not include other users' bookmarks in saved_count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      display_name:
+                        type: string
+                      verified:
+                        type: boolean
+                      created_at:
+                        type: string
+                      updated_at:
+                        type: string
+                      matchings_count:
+                        type: integer
+                      saved_count:
+                        type: integer
+                    required:
+                    - id
+                    - email
+                    - display_name
+                    - verified
+                    - created_at
+                    - updated_at
+                required:
+                - data
+        '401':
+          description: returns 401 when unauthenticated
+          content:
+            text/plain:
+              schema:
+                type: string
     patch:
       summary: update
       tags:
