@@ -615,6 +615,8 @@ paths:
                         type: string
                       saved:
                         type: boolean
+                      owned:
+                        type: boolean
                     required:
                     - id
                     - public
@@ -720,6 +722,8 @@ paths:
                       user_display_name:
                         nullable: true
                       saved:
+                        type: boolean
+                      owned:
                         type: boolean
                     required:
                     - id
@@ -1204,6 +1208,15 @@ paths:
             application/json:
               schema:
                 type: object
+                properties: {}
+                required:
+                - errors
+        '422':
+          description: keeps the account on an incorrect challenge
+          content:
+            application/json:
+              schema:
+                type: object
                 properties:
                   errors:
                     type: array
@@ -1232,6 +1245,7 @@ paths:
                         type: string
                       display_name:
                         type: string
+                        nullable: true
                       verified:
                         type: boolean
                       created_at:
@@ -1242,6 +1256,8 @@ paths:
                         type: integer
                       saved_count:
                         type: integer
+                      oauth_user:
+                        type: boolean
                     required:
                     - id
                     - email
@@ -1317,7 +1333,7 @@ paths:
           type: string
       responses:
         '200':
-          description: returns your_rating when the user has rated the recipe
+          description: returns 200 for a recipe in another users public match
           content:
             application/json:
               schema:
@@ -1399,6 +1415,7 @@ paths:
                       community_rating:
                         type: number
                         format: float
+                        nullable: true
                       community_ratings_count:
                         type: integer
                       like_count:
@@ -1434,7 +1451,7 @@ paths:
               schema:
                 type: string
         '404':
-          description: returns 404 for a recipe linked to another users match
+          description: returns 404 for a recipe linked to another users private match
           content:
             text/html:
               schema:
@@ -1462,7 +1479,7 @@ paths:
               - value
       responses:
         '200':
-          description: rates an accessible recipe and returns your_rating in the response
+          description: rates a recipe in another users public match
           content:
             application/json:
               schema:
@@ -1579,7 +1596,8 @@ paths:
               schema:
                 type: string
         '404':
-          description: returns 404 for a recipe not in the users matches
+          description: returns 404 when rating a recipe only in another users private
+            match
           content:
             text/html:
               schema:
@@ -1772,7 +1790,7 @@ paths:
       - Api::V1::Session
       responses:
         '200':
-          description: lists the active sessions
+          description: marks only the requesting session as current
           content:
             application/json:
               schema:
@@ -1797,14 +1815,16 @@ paths:
                           nullable: true
                         user_id:
                           type: string
+                        current:
+                          type: boolean
                       required:
                       - id
                       - created_at
                       - expires_at
                       - ip_address
-                      - updated_at
                       - user_agent
                       - user_id
+                      - updated_at
                 required:
                 - data
         '401':
@@ -1882,14 +1902,16 @@ paths:
                         nullable: true
                       user_id:
                         type: string
+                      current:
+                        type: boolean
                     required:
                     - id
                     - created_at
                     - expires_at
                     - ip_address
-                    - updated_at
                     - user_agent
                     - user_id
+                    - updated_at
                 required:
                 - data
   "/api/v1/sign_in":
