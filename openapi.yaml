@@ -375,18 +375,14 @@ paths:
               - email
       responses:
         '204':
-          description: enqueues a password reset email
+          description: returns no content without revealing the account state
         '400':
           description: returns bad request
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
+                properties: {}
                 required:
                 - errors
   "/api/v1/matches":
