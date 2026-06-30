@@ -1,6 +1,6 @@
 # cupbored.app
 
-A Rails 8 API for AI-powered ingredient detection and recipe matching. Background pipeline ingests source videos through discovery → channel quality filtering → transcript fetch → asynchronous batched LLM parsing → output validation → source-span grounding → catalog persistence.
+A full-stack app for AI-powered ingredient detection and recipe matching — a Rails 8 API consumed by a React Native mobile client. The backend pipeline ingests source videos through discovery → channel quality filtering → transcript fetch → asynchronous batched LLM parsing → output validation → source-span grounding → catalog persistence. The mobile client takes a photo of your fridge or cupboard, identifies the ingredients, and surfaces matched recipes with a guided cooking walkthrough.
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
@@ -20,6 +20,8 @@ A Rails 8 API for AI-powered ingredient detection and recipe matching. Backgroun
 | **Deployment** | Kamal 2 — zero-downtime Docker deploys to EC2 |
 | **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
 | **Local Infra** | LocalStack for AWS emulation |
+| **Mobile** | React Native (Expo SDK 56, Expo Router v4, TypeScript strict) |
+| **Mobile state** | TanStack Query; end-to-end generated API types (OpenAPI → openapi-typescript) |
 
 ## Architecture
 
@@ -31,6 +33,13 @@ api/
 ├── clients/              # Provider-agnostic external API wrappers
 ├── services/             # ApplicationService objects (one public method per class)
 └── jobs/                 # Sidekiq jobs (find AR object, delegate to service)
+
+mobile/
+├── src/app/              # Expo Router v4 file-based routes
+├── src/screens/          # Screen bodies (co-located tests)
+├── src/components/       # Primitives (Screen, Box, Text, Button, Card, Input, …)
+├── src/lib/api/          # TanStack Query hooks + generated schema types
+└── src/theme/            # Design tokens (colour, spacing, typography)
 ```
 
 ### Request pipeline
@@ -53,6 +62,20 @@ Discovery (cron) ──▶ Channel filter ──▶ Transcript fetch ──▶ P
 - **Quality gate**: every emitted `source_span` is substring-matched against the original transcript before persistence. Hallucinated ingredients/steps fail grounding and never reach the catalog.
 - **Multilingual**: prompt is translation-aware — output text fields are normalised regardless of source language while `source_span` stays verbatim, so grounding still validates.
 - **Tunable**: enqueue spacing is a Redis-backed knob — operators can throttle without redeploying.
+
+## Mobile Client
+
+A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that consumes the Rails API. Types are generated end-to-end: the OpenAPI spec is itself generated from request specs via rspec-openapi, and `openapi-typescript` turns it into typed client hooks — the spec and the API cannot drift independently.
+
+**Core flow:** photograph a fridge or cupboard → AI ingredient detection → ranked recipe matches → recipe detail with flavor profile, difficulty, and guided cooking stages. A persistent walkthrough video plays through the recipe screen and into cook mode without restarting across swipes.
+
+**Discovery surfaces:** home feed with recent matches, paginated explore feed with search and sort, saved/history views, and per-user cuisine preference management.
+
+**Auth:** email/password and OAuth (Sign in with Apple, Sign in with Google) using a verify-and-mint flow — the native SDK returns an identity token; the backend verifies and mints the session.
+
+**Account management:** profile editing (display name), active session management, and in-app account deletion.
+
+**Compliance & safety:** content reporting, user blocking (blocked authors are excluded from feeds), in-app community guidelines, and App Store-compliant in-app account deletion. Scan images are served through an authorized endpoint — un-publishing a match revokes access to its photo.
 
 ## Service Layer
 
@@ -90,15 +113,16 @@ Terraform manages the full AWS stack: EC2 + RDS Postgres + ElastiCache Redis + A
 - SSM SecureString for all secrets, scoped IAM `ssm:GetParameter` per parameter ARN
 - TLS termination at ALB, private subnets for RDS + Redis, no public DB access
 - Static analysis on every PR — zero Brakeman warnings policy, no Semgrep exceptions
+- Authorized media access: scan images are served through a scoped endpoint; un-publishing a match revokes photo access
+- App Store-compliant in-app account deletion with re-authentication and OAuth identity revocation
 
 ## CI Pipeline
 
-GitHub Actions on every PR + merge: RuboCop (full codebase), Brakeman (zero warnings), Bundler Audit, full RSpec suite against real Postgres + Redis (~490 specs), Bullet detects N+1s, auto-deploy to production on merge to main.
+GitHub Actions on every PR + merge:
 
-## Planned
+**Backend:** RuboCop (full codebase), Brakeman (zero warnings), Bundler Audit, full RSpec suite against real Postgres + Redis (~740 specs), Bullet detects N+1s, auto-deploy to production on merge to main.
 
-- React Native mobile app (Expo + TypeScript)
-- OpenAPI contract sync via `openapi-typescript`
+**Mobile:** TypeScript strict (`tsc --noEmit`), ESLint (zero warnings), full RNTL test suite (~460 specs), Semgrep custom security rules (HTTPS-only deep links, EXIF stripping, no secrets in env, token-only storage access), `expo export` bundle validation.
 
 ## Contact
 
