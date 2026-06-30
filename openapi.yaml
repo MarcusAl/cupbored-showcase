@@ -8,6 +8,82 @@ servers:
 - url: https://api.cupbored.ai
   description: Production
 paths:
+  "/api/v1/blocks":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Block
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                match_id:
+                  type: string
+              required:
+              - match_id
+      responses:
+        '201':
+          description: blocks the author of a match and returns 201 with the block
+            record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      blocked_user_id:
+                        type: string
+                    required:
+                    - id
+                    - blocked_user_id
+                required:
+                - data
+        '404':
+          description: returns 404 when the match is another user private match
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: returns 422 when blocking the same author twice via different
+            matches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/blocks/{id}":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Block
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: removes a block the current user owns and returns 204
+        '404':
+          description: returns 404 for a block the current user does not own
+          content:
+            text/html:
+              schema:
+                type: string
   "/api/v1/bookmarks":
     get:
       summary: index
@@ -392,8 +468,7 @@ paths:
       - Api::V1::Match
       responses:
         '200':
-          description: returns matches with ANY recipe meeting ANY of the selected
-            flavor axes >= 30
+          description: includes matches from all authors when no blocks exist
           content:
             application/json:
               schema:
@@ -1285,7 +1360,8 @@ paths:
               - display_name
       responses:
         '200':
-          description: updates display_name
+          description: returns 200 with the updated display_name and user id, and
+            persists the change
           content:
             application/json:
               schema:
@@ -1304,7 +1380,7 @@ paths:
                 required:
                 - data
         '422':
-          description: rejects duplicate display_name case-insensitively
+          description: rejects a duplicate display_name case-insensitively with errors
           content:
             application/json:
               schema:
@@ -1600,6 +1676,62 @@ paths:
                 type: string
         '422':
           description: returns 422 for an out-of-range value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/reports":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Report
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                match_id:
+                  type: string
+                reason:
+                  type: string
+                details:
+                  type: string
+              required:
+              - match_id
+              - reason
+      responses:
+        '201':
+          description: accepts reason 'other'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                    required:
+                    - id
+                required:
+                - data
+        '404':
+          description: returns 404 when reporting another user private match
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: returns 422 when details exceeds 1000 characters
           content:
             application/json:
               schema:
