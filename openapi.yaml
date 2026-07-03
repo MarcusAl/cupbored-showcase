@@ -9,6 +9,36 @@ servers:
   description: Production
 paths:
   "/api/v1/blocks":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Block
+      responses:
+        '200':
+          description: returns blocks most-recent-first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        blocked_user_id:
+                          type: string
+                        display_name:
+                          type: string
+                          nullable: true
+                      required:
+                      - id
+                      - blocked_user_id
+                      - display_name
+                required:
+                - data
     post:
       summary: create
       tags:
@@ -811,6 +841,31 @@ paths:
             text/html:
               schema:
                 type: string
+  "/api/v1/matches/{id}/scan_image":
+    get:
+      summary: scan_image
+      tags:
+      - Api::V1::Match
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: redirects to a presigned image URL for the current users own
+            private match
+          content:
+            text/html:
+              schema:
+                type: string
+        '404':
+          description: returns 404 when the scan has no image attached
+          content:
+            text/html:
+              schema:
+                type: string
   "/api/v1/oauth/apple":
     post:
       summary: apple
@@ -826,12 +881,14 @@ paths:
                   type: string
                 nonce:
                   type: string
+                authorization_code:
+                  type: string
               required:
               - identity_token
               - nonce
       responses:
         '201':
-          description: creates a session for a verified Apple identity
+          description: returns created without calling Apple::ExchangeAuthorizationCode
           content:
             application/json:
               schema:
@@ -1272,7 +1329,7 @@ paths:
       - Api::V1::Profile::User
       responses:
         '204':
-          description: deletes an oauth user without a password challenge
+          description: does not call Apple::RevokeTokens
         '401':
           description: keeps the account on an incorrect challenge
           content:
