@@ -1891,6 +1891,19 @@ paths:
                       type: string
                 required:
                 - errors
+        '503':
+          description: scan processing temporarily unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
   "/api/v1/scans/{id}":
     delete:
       summary: destroy
