@@ -49,19 +49,19 @@ User upload → background detection job → background matching job → ranked 
 ### Background ingest pipeline (LLM batch)
 
 ```
-Discovery (cron) ──▶ Channel filter ──▶ Transcript fetch ──▶ PendingParse buffer
-                                                                    │
-                                                                    ▼
-                                  Async LLM batch submit (cron) ──▶ Poll + retrieve (cron)
-                                                                    │
-                                                                    ▼
-                                       Validate ──▶ Ground source spans ──▶ Persist
+Multi-source discovery (cron) ──▶ Acceptance filters ──▶ Transcript fetch ──▶ PendingParse buffer
+                                                                                     │
+                                                                                     ▼
+                                                   Async LLM batch submit (cron) ──▶ Poll + retrieve (cron)
+                                                                                     │
+                                                                                     ▼
+                                                        Validate ──▶ Ground source spans ──▶ Persist
 ```
 
-- **Cost**: batching cuts LLM spend ~50% vs synchronous calls.
+- **Cost**: batching cuts LLM spend ~50% vs synchronous calls; cheap pre-filters run before any paid API call so spend only goes to viable candidates.
 - **Quality gate**: every emitted `source_span` is substring-matched against the original transcript before persistence. Hallucinated ingredients/steps fail grounding and never reach the catalog.
 - **Multilingual**: prompt is translation-aware — output text fields are normalised regardless of source language while `source_span` stays verbatim, so grounding still validates.
-- **Tunable**: enqueue spacing is a Redis-backed knob — operators can throttle without redeploying.
+- **Operable**: a Redis kill switch pauses spend-incurring stages while already-paid batch results keep collecting; daily funnel counters expose per-stage yield; enqueue spacing is a Redis-backed knob — all without redeploying.
 
 ## Mobile Client
 
