@@ -4,6 +4,12 @@ A full-stack app for AI-powered ingredient detection and recipe matching — a R
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
+<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 30 34" src="https://github.com/user-attachments/assets/b3be8938-b65c-4715-9511-7bf3464f3423" />
+<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 30 05" src="https://github.com/user-attachments/assets/e521d929-4e6f-46d8-a9f3-5ce28c5a4036" />
+<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 29 56" src="https://github.com/user-attachments/assets/9a3056e4-32f2-4eff-af16-79cb42c7a740" />
+<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 29 47" src="https://github.com/user-attachments/assets/68654549-f5aa-4c2b-ba57-8dca2a37686f" />
+
+
 ## Tech Stack
 
 | Layer | Technology |
