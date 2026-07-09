@@ -597,6 +597,13 @@ paths:
           type: array
           items:
             type: string
+      - name: diets
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
       - name: flavors
         in: query
         required: false
@@ -697,6 +704,9 @@ paths:
                               type: integer
                             like_count:
                               type: integer
+                            dietary_tags:
+                              type: array
+                              items: {}
                           required:
                           - id
                           - title
@@ -806,6 +816,9 @@ paths:
                               type: integer
                             like_count:
                               type: integer
+                            dietary_tags:
+                              type: array
+                              items: {}
                           required:
                           - id
                           - title
@@ -1228,6 +1241,82 @@ paths:
                       type: string
                 required:
                 - errors
+  "/api/v1/profile/diet_preferences":
+    get:
+      summary: show
+      tags:
+      - Api::V1::Profile::DietPreference
+      responses:
+        '200':
+          description: includes the available diets list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      diets:
+                        type: array
+                        items:
+                          type: string
+                      available:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                    - diets
+                    - available
+                required:
+                - data
+        '401':
+          description: returns 401 for GET
+          content:
+            text/plain:
+              schema:
+                type: string
+    put:
+      summary: update
+      tags:
+      - Api::V1::Profile::DietPreference
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                diets:
+                  type: array
+                  items:
+                    type: string
+              required:
+              - diets
+      responses:
+        '200':
+          description: ignores invalid diets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      diets:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                    - diets
+                required:
+                - data
+        '401':
+          description: returns 401 for PUT
+          content:
+            text/plain:
+              schema:
+                type: string
   "/api/v1/profile/matches":
     get:
       summary: index
@@ -1556,6 +1645,9 @@ paths:
                       your_rating:
                         nullable: true
                         type: integer
+                      dietary_tags:
+                        type: array
+                        items: {}
                     required:
                     - id
                     - title
@@ -1695,6 +1787,9 @@ paths:
                         type: string
                       your_rating:
                         type: integer
+                      dietary_tags:
+                        type: array
+                        items: {}
                     required:
                     - id
                     - title
