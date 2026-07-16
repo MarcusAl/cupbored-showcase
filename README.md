@@ -61,13 +61,13 @@ Multi-source discovery (cron) ──▶ Acceptance filters ──▶ Transcript 
                                                    Async LLM batch submit (cron) ──▶ Poll + retrieve (cron)
                                                                                      │
                                                                                      ▼
-                                                        Validate ──▶ Ground source spans ──▶ Persist
+                                                        Validate ──▶ Persist
 ```
 
-- **Cost**: batching cuts LLM spend ~50% vs synchronous calls; cheap pre-filters run before any paid API call so spend only goes to viable candidates.
-- **Quality gate**: every emitted `source_span` is substring-matched against the original transcript before persistence. Hallucinated ingredients/steps fail grounding and never reach the catalog.
-- **Multilingual**: prompt is translation-aware — output text fields are normalised regardless of source language while `source_span` stays verbatim, so grounding still validates.
-- **Operable**: a Redis kill switch pauses spend-incurring stages while already-paid batch results keep collecting; daily funnel counters expose per-stage yield; enqueue spacing is a Redis-backed knob — all without redeploying.
+- **Cost**: cheap pre-filters run before any paid API call, and parsing is batched — spend scales with viable candidates, not raw volume.
+- **Quality gate**: parsed output is validated against the original source before persistence; ungrounded content is rejected rather than trusted.
+- **Multilingual**: parsing is translation-aware, normalising output across source languages while preserving verbatim source references for validation.
+- **Operable**: runtime controls pause processing and expose per-stage throughput without a redeploy.
 
 ## Mobile Client
 
@@ -81,15 +81,15 @@ A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that co
 
 **Account management:** profile editing (display name), active session management, and in-app account deletion.
 
-**Compliance & safety:** content reporting, user blocking (blocked authors are excluded from feeds), in-app community guidelines, and App Store-compliant in-app account deletion. Scan images are served through an authorized endpoint — un-publishing a match revokes access to its photo.
+**Compliance & safety:** content reporting, user blocking (blocked authors are excluded from feeds), in-app community guidelines, and App Store-compliant in-app account deletion. Scan images are served through an authorized, access-controlled endpoint.
 
 ## Service Layer
 
 Business logic lives in `ApplicationService` objects with a single public `.call(...)` method (≤3 public methods per class, no god classes). Examples:
 
 - **Scans** — `DetectIngredients`, `ProcessImage`, `PurgeImage`
-- **Recipes** — `DiscoverVideos`, `FilterByChannel`, `ParseTranscript`, `ValidateParsedData`, `VerifyGrounding`, `ProcessBatchResult`, `CreateFromParsed`, `RecomputeIdf`
-- **Matches** — `FindRecipes` (IDF-weighted scoring with core gating + preference boost), `AllocateCourses`
+- **Recipes** — `DiscoverVideos`, `FilterByChannel`, `ParseTranscript`, `ValidateParsedData`, `ProcessBatchResult`, `CreateFromParsed`
+- **Matches** — `FindRecipes`, `AllocateCourses`
 
 ## API Design
 
