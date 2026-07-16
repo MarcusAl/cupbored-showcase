@@ -65,7 +65,7 @@ Multi-source discovery (cron) ──▶ Acceptance filters ──▶ Transcript 
 ```
 
 - **Cost**: cheap pre-filters run before any paid API call, and parsing is batched — spend scales with viable candidates, not raw volume.
-- **Quality gate**: parsed output is validated against the original source before persistence; ungrounded content is rejected rather than trusted.
+- **Quality gate**: parsed output is validated against the original source before persistence; unsupported content is rejected rather than trusted.
 - **Multilingual**: parsing is translation-aware, normalising output across source languages while preserving verbatim source references for validation.
 - **Operable**: runtime controls pause processing and expose per-stage throughput without a redeploy.
 
