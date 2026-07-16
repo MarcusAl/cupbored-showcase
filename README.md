@@ -75,7 +75,7 @@ A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that co
 
 **Core flow:** photograph a fridge or cupboard → AI ingredient detection → ranked recipe matches → recipe detail with flavor profile, difficulty, and guided cooking stages. A persistent walkthrough video plays through the recipe screen and into cook mode without restarting across swipes.
 
-**Discovery surfaces:** home feed with recent matches, paginated explore feed with search and sort, saved/history views, and per-user cuisine preference management.
+**Discovery surfaces:** home feed with recent matches, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine preference management.
 
 **Auth:** email/password and OAuth (Sign in with Apple, Sign in with Google) using a verify-and-mint flow — the native SDK returns an identity token; the backend verifies and mints the session.
 
