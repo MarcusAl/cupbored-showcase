@@ -482,15 +482,6 @@ paths:
       responses:
         '204':
           description: returns no content without revealing the account state
-        '400':
-          description: returns bad request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties: {}
-                required:
-                - errors
   "/api/v1/matches":
     get:
       summary: index
@@ -510,6 +501,8 @@ paths:
                       type: object
                       properties:
                         id:
+                          type: string
+                        scan_id:
                           type: string
                         scan_image_url:
                           type: string
@@ -551,15 +544,18 @@ paths:
                             - id
                             - title
                             - thumbnail_url
-                        scan_id:
-                          type: string
                       required:
                       - id
+                      - scan_id
                       - scan_image_url
                       - ingredient_count
                       - recipe_count
                       - saves_count
                       - created_at
+                      - user_display_name
+                      - public
+                      - ingredients
+                      - recipes
                   pagination:
                     type: object
                     properties:
@@ -666,6 +662,10 @@ paths:
                         type: integer
                       created_at:
                         type: string
+                      scan_id:
+                        type: string
+                      scan_image_url:
+                        type: string
                       ingredients:
                         type: array
                         items:
@@ -685,10 +685,8 @@ paths:
                             title:
                               type: string
                             thumbnail_url:
-                              nullable: true
                               type: string
                             community_rating:
-                              nullable: true
                               type: number
                               format: float
                             community_ratings_count:
@@ -696,17 +694,18 @@ paths:
                             total_time_minutes:
                               type: integer
                             servings:
-                              nullable: true
                               type: integer
                             difficulty:
-                              type: integer
-                            rank:
                               type: integer
                             like_count:
                               type: integer
                             dietary_tags:
                               type: array
                               items: {}
+                            rank:
+                              type: integer
+                            your_rating:
+                              nullable: true
                           required:
                           - id
                           - title
@@ -716,11 +715,9 @@ paths:
                           - total_time_minutes
                           - servings
                           - difficulty
+                          - like_count
+                          - dietary_tags
                           - rank
-                      scan_image_url:
-                        type: string
-                      scan_id:
-                        type: string
                       user_display_name:
                         nullable: true
                         type: string
@@ -733,8 +730,12 @@ paths:
                     - public
                     - saves_count
                     - created_at
+                    - scan_image_url
                     - ingredients
                     - recipes
+                    - user_display_name
+                    - saved
+                    - owned
                 required:
                 - data
         '404':
@@ -782,6 +783,10 @@ paths:
                         type: integer
                       created_at:
                         type: string
+                      scan_id:
+                        type: string
+                      scan_image_url:
+                        type: string
                       ingredients:
                         type: array
                         items:
@@ -812,13 +817,15 @@ paths:
                               nullable: true
                             difficulty:
                               type: integer
-                            rank:
-                              type: integer
                             like_count:
                               type: integer
                             dietary_tags:
                               type: array
                               items: {}
+                            rank:
+                              type: integer
+                            your_rating:
+                              nullable: true
                           required:
                           - id
                           - title
@@ -828,11 +835,9 @@ paths:
                           - total_time_minutes
                           - servings
                           - difficulty
+                          - like_count
+                          - dietary_tags
                           - rank
-                      scan_image_url:
-                        type: string
-                      scan_id:
-                        type: string
                       user_display_name:
                         nullable: true
                       saved:
@@ -844,8 +849,13 @@ paths:
                     - public
                     - saves_count
                     - created_at
+                    - scan_id
+                    - scan_image_url
                     - ingredients
                     - recipes
+                    - user_display_name
+                    - saved
+                    - owned
                 required:
                 - data
         '404':
@@ -1090,6 +1100,8 @@ paths:
                         type: string
                       display_name:
                         nullable: true
+                      canonical_email:
+                        type: string
                       id:
                         type: string
                       created_at:
@@ -1098,12 +1110,11 @@ paths:
                         type: string
                       verified:
                         type: boolean
-                      canonical_email:
-                        type: string
                     required:
                     - password_digest
                     - email
                     - display_name
+                    - canonical_email
                     - id
                     - created_at
                     - updated_at
@@ -1338,6 +1349,8 @@ paths:
                       properties:
                         id:
                           type: string
+                        scan_id:
+                          type: string
                         scan_image_url:
                           type: string
                         ingredient_count:
@@ -1350,7 +1363,6 @@ paths:
                           type: string
                         user_display_name:
                           nullable: true
-                          type: string
                         public:
                           type: boolean
                         ingredients:
@@ -1378,10 +1390,9 @@ paths:
                             - id
                             - title
                             - thumbnail_url
-                        scan_id:
-                          type: string
                       required:
                       - id
+                      - scan_id
                       - scan_image_url
                       - ingredient_count
                       - recipe_count
@@ -1389,6 +1400,8 @@ paths:
                       - created_at
                       - user_display_name
                       - public
+                      - ingredients
+                      - recipes
                   pagination:
                     type: object
                     properties:
@@ -1419,15 +1432,6 @@ paths:
       responses:
         '204':
           description: does not call Apple::RevokeTokens
-        '401':
-          description: keeps the account on an incorrect challenge
-          content:
-            application/json:
-              schema:
-                type: object
-                properties: {}
-                required:
-                - errors
         '422':
           description: keeps the account on an incorrect challenge
           content:
@@ -1482,6 +1486,9 @@ paths:
                     - verified
                     - created_at
                     - updated_at
+                    - matchings_count
+                    - saved_count
+                    - oauth_user
                 required:
                 - data
         '401':
@@ -1538,6 +1545,99 @@ paths:
                       type: string
                 required:
                 - errors
+  "/api/v1/recipes":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Recipe
+      parameters:
+      - name: courses
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: filters by course even without a query
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        thumbnail_url:
+                          nullable: true
+                          type: string
+                        community_rating:
+                          nullable: true
+                          type: number
+                          format: float
+                        community_ratings_count:
+                          type: integer
+                        total_time_minutes:
+                          type: integer
+                        servings:
+                          nullable: true
+                          type: integer
+                        difficulty:
+                          type: integer
+                        like_count:
+                          type: integer
+                        dietary_tags:
+                          type: array
+                          items:
+                            type: string
+                        your_rating:
+                          nullable: true
+                          type: integer
+                      required:
+                      - id
+                      - title
+                      - thumbnail_url
+                      - community_rating
+                      - community_ratings_count
+                      - total_time_minutes
+                      - servings
+                      - difficulty
+                      - like_count
+                      - dietary_tags
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
   "/api/v1/recipes/{id}":
     get:
       summary: show
@@ -1551,7 +1651,8 @@ paths:
           type: string
       responses:
         '200':
-          description: returns 200 for a recipe in another users public match
+          description: returns a recipe reachable only through another users private
+            match
           content:
             application/json:
               schema:
@@ -1672,7 +1773,7 @@ paths:
               schema:
                 type: string
         '404':
-          description: returns 404 for a recipe linked to another users private match
+          description: returns 404 for a nonexistent recipe
           content:
             text/html:
               schema:
@@ -1700,7 +1801,8 @@ paths:
               - value
       responses:
         '200':
-          description: rates a recipe in another users public match
+          description: rates a recipe reachable only through another users private
+            match
           content:
             application/json:
               schema:
@@ -1839,6 +1941,88 @@ paths:
                       type: string
                 required:
                 - errors
+  "/api/v1/recommendations":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Recommendation
+      responses:
+        '200':
+          description: includes the users own rating on a card they have rated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        kind:
+                          type: string
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                nullable: true
+                                type: string
+                              community_rating:
+                                nullable: true
+                                type: number
+                                format: float
+                              community_ratings_count:
+                                type: integer
+                              total_time_minutes:
+                                type: integer
+                              servings:
+                                nullable: true
+                                type: integer
+                              difficulty:
+                                type: integer
+                              like_count:
+                                type: integer
+                              dietary_tags:
+                                type: array
+                                items:
+                                  type: string
+                              your_rating:
+                                nullable: true
+                                type: integer
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                            - community_rating
+                            - community_ratings_count
+                            - total_time_minutes
+                            - servings
+                            - difficulty
+                            - like_count
+                            - dietary_tags
+                      required:
+                      - id
+                      - title
+                      - kind
+                      - recipes
+                required:
+                - data
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
   "/api/v1/reports":
     post:
       summary: create
@@ -1936,14 +2120,15 @@ paths:
                         type: string
                       rejection_reason:
                         nullable: true
-                      ingredients:
-                        nullable: true
                       match_id:
+                        nullable: true
+                      ingredients:
                         nullable: true
                     required:
                     - id
                     - status
                     - rejection_reason
+                    - match_id
                     - ingredients
                 required:
                 - data
@@ -2040,6 +2225,9 @@ paths:
                         type: string
                       rejection_reason:
                         nullable: true
+                      match_id:
+                        nullable: true
+                        type: string
                       ingredients:
                         nullable: true
                         type: array
@@ -2060,13 +2248,11 @@ paths:
                           - raw_name
                           - category
                           - confidence
-                      match_id:
-                        nullable: true
-                        type: string
                     required:
                     - id
                     - status
                     - rejection_reason
+                    - match_id
                     - ingredients
                 required:
                 - data
@@ -2102,11 +2288,11 @@ paths:
                           type: string
                         ip_address:
                           nullable: true
-                        updated_at:
-                          type: string
                         user_agent:
                           nullable: true
                         user_id:
+                          type: string
+                        updated_at:
                           type: string
                         current:
                           type: boolean
@@ -2118,6 +2304,7 @@ paths:
                       - user_agent
                       - user_id
                       - updated_at
+                      - current
                 required:
                 - data
         '401':
@@ -2189,11 +2376,11 @@ paths:
                         type: string
                       ip_address:
                         nullable: true
-                      updated_at:
-                        type: string
                       user_agent:
                         nullable: true
                       user_id:
+                        type: string
+                      updated_at:
                         type: string
                       current:
                         type: boolean
@@ -2205,6 +2392,7 @@ paths:
                     - user_agent
                     - user_id
                     - updated_at
+                    - current
                 required:
                 - data
   "/api/v1/sign_in":
