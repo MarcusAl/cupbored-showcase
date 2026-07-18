@@ -75,7 +75,7 @@ A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that co
 
 **Core flow:** photograph a fridge or cupboard → AI ingredient detection → ranked recipe matches → recipe detail with flavor profile, difficulty, and guided cooking stages. A persistent walkthrough video plays through the recipe screen and into cook mode without restarting across swipes.
 
-**Discovery surfaces:** home feed with recent matches, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine preference management.
+**Discovery surfaces:** home feed with recent matches, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine and dietary preference management (dietary preferences drive a hard ingredient-based exclusion in matching, so a vegan is never served a meat recipe).
 
 **Auth:** email/password and OAuth (Sign in with Apple, Sign in with Google) using a verify-and-mint flow — the native SDK returns an identity token; the backend verifies and mints the session.
 
@@ -89,7 +89,7 @@ Business logic lives in `ApplicationService` objects with a single public `.call
 
 - **Scans** — `DetectIngredients`, `ProcessImage`, `PurgeImage`
 - **Recipes** — `DiscoverVideos`, `FilterByChannel`, `ParseTranscript`, `ValidateParsedData`, `ProcessBatchResult`, `CreateFromParsed`
-- **Matches** — `FindRecipes`, `AllocateCourses`
+- **Matches** — `FindRecipes`, `AllocateCourses`, `DietViolations` (hard dietary exclusion; forbidden-ingredient vocabulary seeded from the Open Food Facts taxonomy)
 
 ## API Design
 
@@ -137,3 +137,5 @@ Marcus Allen — marcusgrantee@gmail.com
 ## License
 
 Proprietary. All rights reserved.
+
+Dietary filtering is powered in part by data from [Open Food Facts](https://world.openfoodfacts.org), © Open Food Facts contributors, used under the [Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/odbl/1-0/).
