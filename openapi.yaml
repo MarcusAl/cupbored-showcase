@@ -702,10 +702,10 @@ paths:
                             dietary_tags:
                               type: array
                               items: {}
-                            rank:
-                              type: integer
                             your_rating:
                               nullable: true
+                            rank:
+                              type: integer
                           required:
                           - id
                           - title
@@ -717,6 +717,7 @@ paths:
                           - difficulty
                           - like_count
                           - dietary_tags
+                          - your_rating
                           - rank
                       user_display_name:
                         nullable: true
@@ -822,10 +823,10 @@ paths:
                             dietary_tags:
                               type: array
                               items: {}
-                            rank:
-                              type: integer
                             your_rating:
                               nullable: true
+                            rank:
+                              type: integer
                           required:
                           - id
                           - title
@@ -837,6 +838,7 @@ paths:
                           - difficulty
                           - like_count
                           - dietary_tags
+                          - your_rating
                           - rank
                       user_display_name:
                         nullable: true
@@ -1558,6 +1560,13 @@ paths:
           type: array
           items:
             type: string
+      - name: diets
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
       - name: q
         in: query
         required: false
@@ -1565,7 +1574,7 @@ paths:
           type: string
       responses:
         '200':
-          description: filters by course even without a query
+          description: filters to recipes tagged with every selected diet
           content:
             application/json:
               schema:
@@ -1975,19 +1984,19 @@ paths:
                               title:
                                 type: string
                               thumbnail_url:
-                                nullable: true
                                 type: string
-                              community_rating:
                                 nullable: true
+                              community_rating:
                                 type: number
                                 format: float
+                                nullable: true
                               community_ratings_count:
                                 type: integer
                               total_time_minutes:
                                 type: integer
                               servings:
-                                nullable: true
                                 type: integer
+                                nullable: true
                               difficulty:
                                 type: integer
                               like_count:
@@ -2010,6 +2019,7 @@ paths:
                             - difficulty
                             - like_count
                             - dietary_tags
+                            - your_rating
                       required:
                       - id
                       - title
