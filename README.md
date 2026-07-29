@@ -4,7 +4,7 @@ A full-stack social recipe iOS/android app for AI-powered ingredient detection a
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
-<img width="200" alt="Screenshot 2026-07-29 at 17 29 17" src="https://github.com/user-attachments/assets/f6178f90-03e2-4182-916d-9e1ad162a0cb" />
+<img width="200" alt="Screenshot 2026-07-29 at 17 29 17" src="https://github.com/user-attachments/assets/3df93e2b-c070-4605-95ae-62ce067a908c" />
 <img width="200" alt="Screenshot 2026-07-29 at 10 57 08" src="https://github.com/user-attachments/assets/bac5593f-8894-4e36-8380-a200df94d263" />
 <img width="200" alt="Screenshot 2026-07-29 at 10 58 25" src="https://github.com/user-attachments/assets/96dbea8d-afe6-4ee2-a331-6362dc797039" />
 <img width="200" alt="Screenshot 2026-07-29 at 10 59 10" src="https://github.com/user-attachments/assets/3d1c38d1-902e-4021-b412-a0f09ed17ae9" />
