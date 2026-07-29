@@ -1,6 +1,6 @@
 # cupbored.app
 
-A full-stack app for AI-powered ingredient detection and recipe matching — a Rails 8 API consumed by a React Native mobile client. The backend pipeline ingests source videos through discovery → channel quality filtering → transcript fetch → asynchronous batched LLM parsing → output validation → catalog persistence. The mobile client takes a photo of your fridge or cupboard, identifies the ingredients, and surfaces matched recipes with a guided cooking walkthrough.
+A full-stack social recipe iOS/android app for AI-powered ingredient detection and recipe matching — a Rails 8 API consumed by a React Native mobile client. The backend pipeline ingests source videos through discovery → channel quality filtering → transcript fetch → asynchronous batched LLM parsing → output validation → catalog persistence. The mobile client takes a photo of your fridge or cupboard, identifies the ingredients, and surfaces matched recipes with a guided cooking walkthrough.
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
