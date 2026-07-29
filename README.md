@@ -4,7 +4,7 @@ A full-stack app for AI-powered ingredient detection and recipe matching — a R
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
-<img width="200" alt="Screenshot 2026-07-29 at 10 56 41" src="https://github.com/user-attachments/assets/056596d4-b9ac-4dff-8132-67fce5a13eca" />
+<img width="200" alt="Screenshot 2026-07-29 at 13 51 33" src="https://github.com/user-attachments/assets/54d55125-a5cf-4616-ae49-5d35a189d545" />
 <img width="200" alt="Screenshot 2026-07-29 at 10 57 08" src="https://github.com/user-attachments/assets/bac5593f-8894-4e36-8380-a200df94d263" />
 <img width="200" alt="Screenshot 2026-07-29 at 10 58 25" src="https://github.com/user-attachments/assets/96dbea8d-afe6-4ee2-a331-6362dc797039" />
 <img width="200" alt="Screenshot 2026-07-29 at 10 59 10" src="https://github.com/user-attachments/assets/3d1c38d1-902e-4021-b412-a0f09ed17ae9" />
