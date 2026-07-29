@@ -4,10 +4,11 @@ A full-stack app for AI-powered ingredient detection and recipe matching — a R
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
-<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 30 34" src="https://github.com/user-attachments/assets/b3be8938-b65c-4715-9511-7bf3464f3423" />
-<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 30 05" src="https://github.com/user-attachments/assets/e521d929-4e6f-46d8-a9f3-5ce28c5a4036" />
-<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 29 56" src="https://github.com/user-attachments/assets/9a3056e4-32f2-4eff-af16-79cb42c7a740" />
-<img width="200" alt="Simulator Screenshot - iPhone 17 Pro - 2026-07-08 at 20 29 47" src="https://github.com/user-attachments/assets/68654549-f5aa-4c2b-ba57-8dca2a37686f" />
+<img width="220" alt="Screenshot 2026-07-29 at 10 56 41" src="https://github.com/user-attachments/assets/056596d4-b9ac-4dff-8132-67fce5a13eca" />
+<img width="220" alt="Screenshot 2026-07-29 at 10 57 08" src="https://github.com/user-attachments/assets/bac5593f-8894-4e36-8380-a200df94d263" />
+<img width="220" alt="Screenshot 2026-07-29 at 10 58 25" src="https://github.com/user-attachments/assets/96dbea8d-afe6-4ee2-a331-6362dc797039" />
+<img width="220" alt="Screenshot 2026-07-29 at 10 59 10" src="https://github.com/user-attachments/assets/3d1c38d1-902e-4021-b412-a0f09ed17ae9" />
+
 
 
 ## Tech Stack
