@@ -71,6 +71,7 @@ Multi-source discovery (cron) ──▶ Acceptance filters ──▶ Transcript 
 - **Quality gate**: parsed output is validated against the original source before persistence; unsupported content is rejected rather than trusted.
 - **Multilingual**: parsing is translation-aware, normalising output across source languages while preserving verbatim source references for validation.
 - **Operable**: runtime controls pause processing and expose per-stage throughput without a redeploy.
+- **Presentation-ready**: each recipe's thumbnail is selected and normalised at ingest, and its dimensions recorded, so clients can lay out media without reflow.
 
 ## Mobile Client
 
@@ -82,7 +83,7 @@ A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that co
 
 **Auth:** email/password and OAuth (Sign in with Apple, Sign in with Google) using a verify-and-mint flow — the native SDK returns an identity token; the backend verifies and mints the session.
 
-**Account management:** profile editing (display name), active session management, and in-app account deletion.
+**Account management:** profile editing (display name and a customizable avatar — uploaded, cropped to a square, and resized client-side; author avatars surface on match cards across the feeds), active session management, and in-app account deletion.
 
 **Compliance & safety:** content reporting, user blocking (blocked authors are excluded from feeds), in-app community guidelines, and App Store-compliant in-app account deletion. Scan images are served through an authorized, access-controlled endpoint.
 
@@ -91,7 +92,7 @@ A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that co
 Business logic lives in `ApplicationService` objects with a single public `.call(...)` method (≤3 public methods per class, no god classes). Examples:
 
 - **Scans** — `DetectIngredients`, `ProcessImage`, `PurgeImage`
-- **Recipes** — `DiscoverVideos`, `FilterByChannel`, `ParseTranscript`, `ValidateParsedData`, `ProcessBatchResult`, `CreateFromParsed`
+- **Recipes** — `DiscoverVideos`, `FilterByChannel`, `ParseTranscript`, `ValidateParsedData`, `ProcessBatchResult`, `CreateFromParsed`, `SelectBestThumbnail`, `ResolveThumbnail`
 - **Matches** — `FindRecipes`, `AllocateCourses`, `DietViolations` (hard dietary exclusion; forbidden-ingredient vocabulary seeded from the Open Food Facts taxonomy)
 
 ## API Design
