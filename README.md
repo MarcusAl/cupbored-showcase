@@ -28,7 +28,7 @@ A full-stack social recipe iOS/android app for AI-powered ingredient detection a
 | **Infrastructure** | Terraform → AWS (EC2, RDS, ElastiCache, ALB, ECR, S3, SSM, VPC) |
 | **Deployment** | Kamal 2 — zero-downtime Docker deploys to EC2 |
 | **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
-| **Local Infra** | LocalStack for AWS emulation |
+| **Local Infra** | floci for AWS emulation (free, MIT, drop-in for LocalStack) |
 | **Mobile** | React Native (Expo SDK 56, Expo Router v4, TypeScript strict) |
 | **Mobile state** | TanStack Query; end-to-end generated API types (OpenAPI → openapi-typescript) |
 
