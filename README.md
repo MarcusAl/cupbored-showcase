@@ -1,6 +1,6 @@
 # cupbored.app
 
-A full-stack social recipe iOS/android app for AI-powered ingredient detection and recipe matching — a Rails 8 API consumed by a React Native mobile client. The backend pipeline ingests source videos through discovery → channel quality filtering → transcript fetch → asynchronous batched LLM parsing → output validation → catalog persistence. The mobile client takes a photo of your fridge or cupboard, identifies the ingredients, and surfaces matched recipes with a guided cooking walkthrough.
+A full-stack social recipe iOS/Android app for AI-powered ingredient detection and recipe matching — a Rails 8 API consumed by a React Native mobile client. The mobile client takes a photo of your fridge or cupboard, identifies the ingredients, and surfaces matched recipes with a guided cooking walkthrough. Behind it, an asynchronous LLM pipeline builds and curates the recipe catalog.
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
@@ -22,13 +22,13 @@ A full-stack social recipe iOS/android app for AI-powered ingredient detection a
 | **Database** | PostgreSQL — UUID PKs, `pg_trgm`, native enums, counter caches |
 | **Background Jobs** | Sidekiq + Redis (sidekiq-cron, sidekiq-throttled) |
 | **Storage** | Active Storage on AWS S3 |
-| **Auth** | Token-based (`has_secure_password` + signed session tokens); Sign in with Apple & Google |
+| **Auth** | Token-based sessions; Sign in with Apple & Google |
 | **Email** | Third-party transactional provider |
 | **API Docs** | OpenAPI 3.0, generated from request specs via rspec-openapi |
 | **Infrastructure** | Terraform → AWS (EC2, RDS, ElastiCache, ALB, ECR, S3, SSM, VPC) |
 | **Deployment** | Kamal 2 — zero-downtime Docker deploys to EC2 |
 | **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
-| **Local Infra** | floci for AWS emulation (free, MIT, drop-in for LocalStack) |
+| **Local Infra** | floci for local AWS emulation |
 | **Mobile** | React Native (Expo SDK 56, Expo Router v4, TypeScript strict) |
 | **Mobile state** | TanStack Query; end-to-end generated API types (OpenAPI → openapi-typescript) |
 
@@ -58,20 +58,13 @@ User upload → background detection job → background matching job → ranked 
 ### Background ingest pipeline (LLM batch)
 
 ```
-Multi-source discovery (cron) ──▶ Acceptance filters ──▶ Transcript fetch ──▶ PendingParse buffer
-                                                                                     │
-                                                                                     ▼
-                                                   Async LLM batch submit (cron) ──▶ Poll + retrieve (cron)
-                                                                                     │
-                                                                                     ▼
-                                                        Validate ──▶ Persist
+Scheduled discovery ──▶ Filtering ──▶ Buffer ──▶ Async LLM batch ──▶ Validate ──▶ Persist
 ```
 
-- **Cost**: cheap pre-filters run before any paid API call, and parsing is batched — spend scales with viable candidates, not raw volume.
-- **Quality gate**: parsed output is validated against the original source before persistence; unsupported content is rejected rather than trusted.
-- **Multilingual**: parsing is translation-aware, normalising output across source languages while preserving verbatim source references for validation.
-- **Operable**: runtime controls pause processing and expose per-stage throughput without a redeploy.
-- **Presentation-ready**: each recipe's thumbnail is selected and normalised at ingest, and its dimensions recorded, so clients can lay out media without reflow.
+A cron-driven, fully asynchronous pipeline: candidates are filtered before any paid API call, parsing
+runs as batched LLM work rather than per-item requests, and output is validated against its source
+before it is allowed into the catalog. Multilingual sources are normalised on the way in. Per-stage
+throughput is observable and processing can be paused at runtime without a redeploy.
 
 ## Mobile Client
 
@@ -79,21 +72,23 @@ A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that co
 
 **Core flow:** photograph a fridge or cupboard → AI ingredient detection → ranked recipe matches → recipe detail with flavor profile, difficulty, and guided cooking stages. A persistent walkthrough video plays through the recipe screen and into cook mode without restarting across swipes.
 
-**Discovery surfaces:** home feed with recent matches, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine and dietary preference management (dietary preferences drive a hard ingredient-based exclusion in matching, so a vegan is never served a meat recipe).
+**Discovery surfaces:** home feed with recent matches, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine and dietary preference management, which feeds directly into matching.
 
-**Auth:** email/password and OAuth (Sign in with Apple, Sign in with Google) using a verify-and-mint flow — the native SDK returns an identity token; the backend verifies and mints the session.
+**Auth:** email/password and OAuth (Sign in with Apple, Sign in with Google), with the backend as the sole issuer of application sessions.
 
 **Account management:** profile editing (display name and a customizable avatar — uploaded, cropped to a square, and resized client-side; author avatars surface on match cards across the feeds), active session management, and in-app account deletion.
 
-**Compliance & safety:** content reporting, user blocking (blocked authors are excluded from feeds), in-app community guidelines, and App Store-compliant in-app account deletion. Scan images are served through an authorized, access-controlled endpoint.
+**Compliance & safety:** content reporting, user blocking, in-app community guidelines, App Store-compliant in-app account deletion, and access-controlled delivery of user-uploaded images.
 
 ## Service Layer
 
-Business logic lives in `ApplicationService` objects with a single public `.call(...)` method (≤3 public methods per class, no god classes). Examples:
+Business logic lives in `ApplicationService` objects with a single public `.call(...)` method — one
+responsibility per class, no god classes, dependencies injected through the constructor so
+collaborators are visible and substitutable. Services are namespaced by domain (scans, recipes,
+matches, notifications) and receive objects; jobs find records and delegate.
 
-- **Scans** — `DetectIngredients`, `ProcessImage`, `PurgeImage`
-- **Recipes** — `DiscoverVideos`, `FilterByChannel`, `ParseTranscript`, `ValidateParsedData`, `ProcessBatchResult`, `CreateFromParsed`, `SelectBestThumbnail`, `ResolveThumbnail`
-- **Matches** — `FindRecipes`, `AllocateCourses`, `DietViolations` (hard dietary exclusion; forbidden-ingredient vocabulary seeded from the Open Food Facts taxonomy)
+External integrations sit behind provider-agnostic client classes that return generic data
+structures, so a provider can be swapped without touching service logic.
 
 ## API Design
 
@@ -109,30 +104,34 @@ A layer of immutable value objects (Ruby `Data`) wraps parsed external/AI payloa
 
 ## Background Processing
 
-Seven Sidekiq jobs across `:image_processing`, `:recipe_processing`, `:default`, `:mailers`, and `:cron` queues. Jobs find AR objects by ID then delegate to services. All jobs are idempotent with automatic retries on transient external failures only (timeout, connection errors) — never on logical errors.
+Work is split across dedicated Sidekiq queues so slow media and ingest work can never starve interactive requests. Jobs find AR objects by ID then delegate to services. All jobs are idempotent with automatic retries on transient external failures only (timeout, connection errors) — never on logical errors.
 
 ## Infrastructure
 
-Terraform manages the full AWS stack: EC2 + RDS Postgres + ElastiCache Redis + ALB + ECR + S3 + SSM SecureString secrets + scoped VPC. Kamal handles container orchestration. HCP Terraform Cloud for production workspace state.
+Terraform manages the full AWS stack — compute, managed Postgres and Redis, load balancing, object storage, secret storage and a scoped VPC — with remote state in HCP Terraform Cloud. Kamal handles zero-downtime container deploys. The same Terraform configuration is exercised locally against an AWS emulator before it reaches a real account.
 
 ## Security
 
-- Application-level rate limiting via `rack-attack` (per-IP throttling, per-account login throttle, per-token burst protection, Redis-backed IP blocklist, per-user daily quota; standard `RateLimit-*` / `Retry-After` headers), fail-open under Redis outage
-- Trusted proxy configuration for accurate client IP behind ALB
-- IDOR prevention enforced via scoped queries (`current_user.association` + `.sole` lookups)
-- SSM SecureString for all secrets, scoped IAM `ssm:GetParameter` per parameter ARN
-- TLS termination at ALB, private subnets for RDS + Redis, no public DB access
-- Static analysis on every PR — zero Brakeman warnings policy, no Semgrep exceptions
-- Authorized media access: scan images are served through a scoped endpoint; un-publishing a match revokes photo access
-- App Store-compliant in-app account deletion with re-authentication and OAuth identity revocation
+- Layered application-level rate limiting and abuse controls, with standard `RateLimit-*` /
+  `Retry-After` headers so clients can self-regulate
+- Authorisation enforced by construction: every user-owned resource is reached through a scoped
+  query, so an unscoped lookup is a review failure rather than a latent IDOR
+- Secrets held in managed secure storage with least-privilege access per secret — never in the repo,
+  never in an image
+- TLS terminated at the load balancer; datastores on private subnets with no public access
+- Timing-safe authentication with uniform failure responses, so auth outcomes don't enumerate accounts
+- Static analysis gates every PR: zero-warning policy, no suppressions
+- Account deletion re-authenticates and revokes federated identities
+
+Specific thresholds, rules and control internals are deliberately not documented here.
 
 ## CI Pipeline
 
 GitHub Actions on every PR + merge:
 
-**Backend:** RuboCop (full codebase), Brakeman (zero warnings), Bundler Audit, full RSpec suite against real Postgres + Redis (~740 specs), Bullet detects N+1s, auto-deploy to production on merge to main.
+**Backend:** RuboCop (full codebase), Brakeman (zero warnings), dependency audit, full RSpec suite against real Postgres + Redis, N+1 detection failing the build, auto-deploy on merge to main.
 
-**Mobile:** TypeScript strict (`tsc --noEmit`), ESLint (zero warnings), full RNTL test suite (~460 specs), Semgrep custom security rules (HTTPS-only deep links, EXIF stripping, no secrets in env, token-only storage access), `expo export` bundle validation.
+**Mobile:** TypeScript strict (`tsc --noEmit`), ESLint (zero warnings), full RNTL test suite, custom Semgrep security rules, and bundle validation via `expo export`.
 
 ## Contact
 
