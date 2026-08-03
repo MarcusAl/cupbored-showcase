@@ -3,413 +3,35 @@ openapi: 3.0.3
 info:
   title: cupbored.ai API
   version: v1
-  description: AI-powered ingredient detection and recipe matching platform
+  description: |-
+    AI-powered ingredient detection and recipe matching platform.
+
+    This is a curated subset of the API, published to show the design conventions: bearer-token auth, a `{ data: ... }` success envelope, an `{ errors: [...] }` failure envelope, paginated collections, and `204 No Content` on destroy. The full surface is not documented publicly.
 servers:
 - url: https://api.cupbored.ai
   description: Production
 paths:
-  "/api/v1/blocks":
-    get:
-      summary: index
-      tags:
-      - Api::V1::Block
-      responses:
-        '200':
-          description: returns blocks most-recent-first
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        blocked_user_id:
-                          type: string
-                        display_name:
-                          type: string
-                          nullable: true
-                      required:
-                      - id
-                      - blocked_user_id
-                      - display_name
-                required:
-                - data
+  "/api/v1/sign_up":
     post:
       summary: create
       tags:
-      - Api::V1::Block
+      - Api::V1::Registration
       requestBody:
         content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                match_id:
-                  type: string
-              required:
-              - match_id
-      responses:
-        '201':
-          description: blocks the author of a match and returns 201 with the block
-            record
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      blocked_user_id:
-                        type: string
-                    required:
-                    - id
-                    - blocked_user_id
-                required:
-                - data
-        '404':
-          description: returns 404 when the match is another user private match
-          content:
-            text/html:
-              schema:
-                type: string
-        '422':
-          description: returns 422 when blocking the same author twice via different
-            matches
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/blocks/{id}":
-    delete:
-      summary: destroy
-      tags:
-      - Api::V1::Block
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: removes a block the current user owns and returns 204
-        '404':
-          description: returns 404 for a block the current user does not own
-          content:
-            text/html:
-              schema:
-                type: string
-  "/api/v1/bookmarks":
-    get:
-      summary: index
-      tags:
-      - Api::V1::Bookmark
-      responses:
-        '200':
-          description: does not trigger N+1 queries when returning multiple matches
-            with recipes and ingredients
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        scan_id:
-                          type: string
-                        scan_image_url:
-                          type: string
-                        ingredient_count:
-                          type: integer
-                        recipe_count:
-                          type: integer
-                        saves_count:
-                          type: integer
-                        created_at:
-                          type: string
-                        user_display_name:
-                          nullable: true
-                        public:
-                          type: boolean
-                        ingredients:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              name:
-                                type: string
-                            required:
-                            - name
-                        recipes:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              title:
-                                type: string
-                              thumbnail_url:
-                                nullable: true
-                                type: string
-                            required:
-                            - id
-                            - title
-                            - thumbnail_url
-                      required:
-                      - id
-                      - scan_id
-                      - scan_image_url
-                      - ingredient_count
-                      - recipe_count
-                      - saves_count
-                      - created_at
-                      - user_display_name
-                      - public
-                      - ingredients
-                      - recipes
-                  pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                      pages:
-                        type: integer
-                      count:
-                        type: integer
-                    required:
-                    - page
-                    - pages
-                    - count
-                required:
-                - data
-                - pagination
-    post:
-      summary: create
-      tags:
-      - Api::V1::Bookmark
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                match_id:
-                  type: string
-              required:
-              - match_id
-      responses:
-        '201':
-          description: allows a user to bookmark their own private match
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      match_id:
-                        type: string
-                    required:
-                    - id
-                    - match_id
-                required:
-                - data
-        '404':
-          description: returns 404 when bookmarking another user private match
-          content:
-            text/html:
-              schema:
-                type: string
-        '422':
-          description: rejects duplicate bookmarks with errors array
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/bookmarks/{id}":
-    delete:
-      summary: destroy
-      tags:
-      - Api::V1::Bookmark
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '204':
-          description: removes a bookmark
-  "/api/v1/identity/email":
-    patch:
-      summary: update
-      tags:
-      - Api::V1::Identity::Email
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
               type: object
               properties:
                 email:
-                  type: string
-                password_challenge:
-                  type: string
-              required:
-              - email
-              - password_challenge
-      responses:
-        '200':
-          description: does not enqueue a verification email
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      email:
-                        type: string
-                      display_name:
-                        nullable: true
-                      verified:
-                        type: boolean
-                      created_at:
-                        type: string
-                      updated_at:
-                        type: string
-                    required:
-                    - id
-                    - email
-                    - display_name
-                    - verified
-                    - created_at
-                    - updated_at
-                required:
-                - data
-        '401':
-          description: returns unauthorized
-          content:
-            text/plain:
-              schema:
-                type: string
-        '422':
-          description: returns unprocessable content
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/identity/email_verification":
-    get:
-      summary: show
-      tags:
-      - Api::V1::Identity::EmailVerification
-      parameters:
-      - name: sid
-        in: query
-        required: false
-        schema:
-          type: string
-      responses:
-        '204':
-          description: marks the user as verified
-        '400':
-          description: returns bad request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-    post:
-      summary: create
-      tags:
-      - Api::V1::Identity::EmailVerification
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties: {}
-      responses:
-        '204':
-          description: enqueues a verification email
-        '401':
-          description: returns unauthorized
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/identity/password_reset":
-    patch:
-      summary: update
-      tags:
-      - Api::V1::Identity::PasswordReset
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                sid:
                   type: string
                 password:
                   type: string
-                password_confirmation:
-                  type: string
               required:
-              - sid
+              - email
               - password
-              - password_confirmation
       responses:
-        '200':
-          description: returns the user data
+        '201':
+          description: creates a user
           content:
             application/json:
               schema:
@@ -440,7 +62,175 @@ paths:
                 required:
                 - data
         '400':
-          description: returns bad request
+          description: rejects a Gmail alias of an existing account without creating a second user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/sign_in":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+              - email
+              - password
+      responses:
+        '201':
+          description: creates a session and returns a token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          created_at:
+                            type: string
+                          expires_at:
+                            type: string
+                          ip_address:
+                            type: string
+                          updated_at:
+                            type: string
+                          user_agent:
+                            nullable: true
+                          user_id:
+                            type: string
+                        required:
+                        - id
+                        - created_at
+                        - expires_at
+                        - ip_address
+                        - updated_at
+                        - user_agent
+                        - user_id
+                      token:
+                        type: string
+                    required:
+                    - session
+                    - token
+                required:
+                - data
+        '401':
+          description: rejects invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/sign_out":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Session
+      responses:
+        '200':
+          description: destroys only the current session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                    required:
+                    - message
+                required:
+                - data
+        '401':
+          description: rejects an invalid token
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/scans":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Scan
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                ingredients:
+                  type: array
+                  items:
+                    type: string
+                courses:
+                  type: array
+                  items:
+                    type: string
+              required:
+              - image
+      responses:
+        '201':
+          description: increments the global counter on a successful scan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                      rejection_reason:
+                        nullable: true
+                      match_id:
+                        nullable: true
+                      ingredients:
+                        nullable: true
+                    required:
+                    - id
+                    - status
+                    - rejection_reason
+                    - match_id
+                    - ingredients
+                required:
+                - data
+        '400':
+          description: rejects requests without an image
           content:
             application/json:
               schema:
@@ -453,7 +243,7 @@ paths:
                 required:
                 - errors
         '422':
-          description: returns unprocessable content
+          description: rejects invalid courses
           content:
             application/json:
               schema:
@@ -465,23 +255,110 @@ paths:
                       type: string
                 required:
                 - errors
-    post:
-      summary: create
+        '429':
+          description: returns 429 when the global cap is hit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+        '503':
+          description: scan processing temporarily unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/scans/{id}":
+    delete:
+      summary: destroy
       tags:
-      - Api::V1::Identity::PasswordReset
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-              required:
-              - email
+      - Api::V1::Scan
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '204':
-          description: returns no content without revealing the account state
+          description: deletes the scan
+    get:
+      summary: show
+      tags:
+      - Api::V1::Scan
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns ingredients and match_id when completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                      rejection_reason:
+                        nullable: true
+                      match_id:
+                        nullable: true
+                        type: string
+                      ingredients:
+                        nullable: true
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            raw_name:
+                              type: string
+                            category:
+                              type: string
+                            confidence:
+                              type: number
+                              format: float
+                          required:
+                          - name
+                          - raw_name
+                          - category
+                          - confidence
+                    required:
+                    - id
+                    - status
+                    - rejection_reason
+                    - match_id
+                    - ingredients
+                required:
+                - data
+        '404':
+          description: returns 404 for another users scan
+          content:
+            text/html:
+              schema:
+                type: string
   "/api/v1/matches":
     get:
       summary: index
@@ -866,479 +743,14 @@ paths:
             text/html:
               schema:
                 type: string
-  "/api/v1/matches/{id}/scan_image":
-    get:
-      summary: scan_image
-      tags:
-      - Api::V1::Match
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '302':
-          description: redirects to a presigned image URL for the current users own
-            private match
-          content:
-            text/html:
-              schema:
-                type: string
-        '404':
-          description: returns 404 when the scan has no image attached
-          content:
-            text/html:
-              schema:
-                type: string
-  "/api/v1/oauth/apple":
-    post:
-      summary: apple
-      tags:
-      - Api::V1::Oauth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                identity_token:
-                  type: string
-                nonce:
-                  type: string
-                authorization_code:
-                  type: string
-              required:
-              - identity_token
-              - nonce
-      responses:
-        '201':
-          description: returns created without calling Apple::ExchangeAuthorizationCode
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      session:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          created_at:
-                            type: string
-                          expires_at:
-                            type: string
-                          ip_address:
-                            type: string
-                          updated_at:
-                            type: string
-                          user_agent:
-                            nullable: true
-                          user_id:
-                            type: string
-                        required:
-                        - id
-                        - created_at
-                        - expires_at
-                        - ip_address
-                        - updated_at
-                        - user_agent
-                        - user_id
-                      token:
-                        type: string
-                    required:
-                    - session
-                    - token
-                required:
-                - data
-        '401':
-          description: rejects an invalid token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-        '422':
-          description: rejects an identity whose email already has a password account
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/oauth/google":
-    post:
-      summary: google
-      tags:
-      - Api::V1::Oauth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                identity_token:
-                  type: string
-              required:
-              - identity_token
-      responses:
-        '201':
-          description: creates a session for a verified Google identity
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      session:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          created_at:
-                            type: string
-                          expires_at:
-                            type: string
-                          ip_address:
-                            type: string
-                          updated_at:
-                            type: string
-                          user_agent:
-                            nullable: true
-                          user_id:
-                            type: string
-                        required:
-                        - id
-                        - created_at
-                        - expires_at
-                        - ip_address
-                        - updated_at
-                        - user_agent
-                        - user_id
-                      token:
-                        type: string
-                    required:
-                    - session
-                    - token
-                required:
-                - data
-        '401':
-          description: rejects an invalid token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-        '422':
-          description: rejects an identity whose email already has a password account
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/password":
-    patch:
-      summary: update
-      tags:
-      - Api::V1::Password
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password:
-                  type: string
-                password_confirmation:
-                  type: string
-                password_challenge:
-                  type: string
-              required:
-              - password
-              - password_confirmation
-              - password_challenge
-      responses:
-        '200':
-          description: updates the password with a valid challenge
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      password_digest:
-                        type: string
-                      email:
-                        type: string
-                      display_name:
-                        nullable: true
-                      canonical_email:
-                        type: string
-                      id:
-                        type: string
-                      created_at:
-                        type: string
-                      updated_at:
-                        type: string
-                      verified:
-                        type: boolean
-                    required:
-                    - password_digest
-                    - email
-                    - display_name
-                    - canonical_email
-                    - id
-                    - created_at
-                    - updated_at
-                    - verified
-                required:
-                - data
-        '400':
-          description: rejects an incorrect password challenge
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-        '401':
-          description: rejects an invalid token
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/profile/cuisine_preferences":
-    get:
-      summary: show
-      tags:
-      - Api::V1::Profile::CuisinePreference
-      responses:
-        '200':
-          description: includes the available cuisines list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      cuisines:
-                        type: array
-                        items:
-                          type: string
-                      available:
-                        type: array
-                        items:
-                          type: string
-                    required:
-                    - cuisines
-                    - available
-                required:
-                - data
-    put:
-      summary: update
-      tags:
-      - Api::V1::Profile::CuisinePreference
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                cuisines:
-                  type: array
-                  items:
-                    type: string
-              required:
-              - cuisines
-      responses:
-        '200':
-          description: ignores invalid cuisines
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      cuisines:
-                        type: array
-                        items:
-                          type: string
-                    required:
-                    - cuisines
-                required:
-                - data
-  "/api/v1/profile/cuisine_suggestions":
-    post:
-      summary: create
-      tags:
-      - Api::V1::Profile::CuisineSuggestion
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-              required:
-              - name
-      responses:
-        '201':
-          description: creates a cuisine suggestion
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      name:
-                        type: string
-                    required:
-                    - id
-                    - name
-                required:
-                - data
-        '422':
-          description: rejects blank suggestions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/profile/diet_preferences":
-    get:
-      summary: show
-      tags:
-      - Api::V1::Profile::DietPreference
-      responses:
-        '200':
-          description: includes the available diets list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      diets:
-                        type: array
-                        items:
-                          type: string
-                      available:
-                        type: array
-                        items:
-                          type: string
-                    required:
-                    - diets
-                    - available
-                required:
-                - data
-        '401':
-          description: returns 401 for GET
-          content:
-            text/plain:
-              schema:
-                type: string
-    put:
-      summary: update
-      tags:
-      - Api::V1::Profile::DietPreference
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                diets:
-                  type: array
-                  items:
-                    type: string
-              required:
-              - diets
-      responses:
-        '200':
-          description: ignores invalid diets
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      diets:
-                        type: array
-                        items:
-                          type: string
-                    required:
-                    - diets
-                required:
-                - data
-        '401':
-          description: returns 401 for PUT
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/profile/matches":
+  "/api/v1/bookmarks":
     get:
       summary: index
       tags:
-      - Api::V1::Profile::Match
+      - Api::V1::Bookmark
       responses:
         '200':
-          description: does not trigger N+1 queries when returning multiple matches
-            with recipes and ingredients
+          description: does not trigger N+1 queries when returning multiple matches with recipes and ingredients
           content:
             application/json:
               schema:
@@ -1420,624 +832,10 @@ paths:
                 required:
                 - data
                 - pagination
-        '401':
-          description: returns 401 when unauthenticated
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/profile/user":
-    delete:
-      summary: destroy
-      tags:
-      - Api::V1::Profile::User
-      responses:
-        '204':
-          description: does not call Apple::RevokeTokens
-        '422':
-          description: keeps the account on an incorrect challenge
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-    get:
-      summary: show
-      tags:
-      - Api::V1::Profile::User
-      responses:
-        '200':
-          description: does not include other users' bookmarks in saved_count
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      email:
-                        type: string
-                      display_name:
-                        type: string
-                        nullable: true
-                      verified:
-                        type: boolean
-                      created_at:
-                        type: string
-                      updated_at:
-                        type: string
-                      matchings_count:
-                        type: integer
-                      saved_count:
-                        type: integer
-                      oauth_user:
-                        type: boolean
-                    required:
-                    - id
-                    - email
-                    - display_name
-                    - verified
-                    - created_at
-                    - updated_at
-                    - matchings_count
-                    - saved_count
-                    - oauth_user
-                required:
-                - data
-        '401':
-          description: returns 401 when unauthenticated
-          content:
-            text/plain:
-              schema:
-                type: string
-    patch:
-      summary: update
-      tags:
-      - Api::V1::Profile::User
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                display_name:
-                  type: string
-              required:
-              - display_name
-      responses:
-        '200':
-          description: returns 200 with the updated display_name and user id, and
-            persists the change
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      display_name:
-                        type: string
-                    required:
-                    - id
-                    - display_name
-                required:
-                - data
-        '422':
-          description: rejects a duplicate display_name case-insensitively with errors
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/recipes":
-    get:
-      summary: index
-      tags:
-      - Api::V1::Recipe
-      parameters:
-      - name: courses
-        in: query
-        required: false
-        schema:
-          type: array
-          items:
-            type: string
-      - name: diets
-        in: query
-        required: false
-        schema:
-          type: array
-          items:
-            type: string
-      - name: q
-        in: query
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: filters to recipes tagged with every selected diet
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        title:
-                          type: string
-                        thumbnail_url:
-                          nullable: true
-                          type: string
-                        community_rating:
-                          nullable: true
-                          type: number
-                          format: float
-                        community_ratings_count:
-                          type: integer
-                        total_time_minutes:
-                          type: integer
-                        servings:
-                          nullable: true
-                          type: integer
-                        difficulty:
-                          type: integer
-                        like_count:
-                          type: integer
-                        dietary_tags:
-                          type: array
-                          items:
-                            type: string
-                        your_rating:
-                          nullable: true
-                          type: integer
-                      required:
-                      - id
-                      - title
-                      - thumbnail_url
-                      - community_rating
-                      - community_ratings_count
-                      - total_time_minutes
-                      - servings
-                      - difficulty
-                      - like_count
-                      - dietary_tags
-                  pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                      pages:
-                        type: integer
-                      count:
-                        type: integer
-                    required:
-                    - page
-                    - pages
-                    - count
-                required:
-                - data
-                - pagination
-        '401':
-          description: requires authentication
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/recipes/{id}":
-    get:
-      summary: show
-      tags:
-      - Api::V1::Recipe
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: returns a recipe reachable only through another users private
-            match
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      title:
-                        type: string
-                      description:
-                        type: string
-                      cuisine:
-                        type: string
-                      course:
-                        type: string
-                      difficulty:
-                        type: integer
-                      flavor_profile:
-                        type: object
-                        properties:
-                          sweet:
-                            type: integer
-                          salty:
-                            type: integer
-                          sour:
-                            type: integer
-                          spicy:
-                            type: integer
-                          bitter:
-                            type: integer
-                          umami:
-                            type: integer
-                        required:
-                        - sweet
-                        - salty
-                        - sour
-                        - spicy
-                        - bitter
-                        - umami
-                      ingredients:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                            quantity:
-                              type: string
-                            unit:
-                              type: string
-                            core:
-                              type: boolean
-                          required:
-                          - name
-                          - quantity
-                          - unit
-                          - core
-                      steps:
-                        type: array
-                        items:
-                          type: string
-                      thumbnail_url:
-                        nullable: true
-                        type: string
-                      channel_name:
-                        type: string
-                      prep_time_minutes:
-                        nullable: true
-                        type: integer
-                      cook_time_minutes:
-                        nullable: true
-                        type: integer
-                      servings:
-                        nullable: true
-                        type: integer
-                      community_rating:
-                        type: number
-                        format: float
-                        nullable: true
-                      community_ratings_count:
-                        type: integer
-                      like_count:
-                        type: integer
-                      view_count:
-                        type: integer
-                      external_video_id:
-                        type: string
-                      your_rating:
-                        nullable: true
-                        type: integer
-                      dietary_tags:
-                        type: array
-                        items: {}
-                    required:
-                    - id
-                    - title
-                    - description
-                    - cuisine
-                    - course
-                    - difficulty
-                    - flavor_profile
-                    - ingredients
-                    - steps
-                    - thumbnail_url
-                    - channel_name
-                    - prep_time_minutes
-                    - cook_time_minutes
-                    - servings
-                required:
-                - data
-        '401':
-          description: requires authentication
-          content:
-            text/plain:
-              schema:
-                type: string
-        '404':
-          description: returns 404 for a nonexistent recipe
-          content:
-            text/html:
-              schema:
-                type: string
-  "/api/v1/recipes/{id}/rating":
-    put:
-      summary: rating
-      tags:
-      - Api::V1::Recipe
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                value:
-                  type: string
-              required:
-              - value
-      responses:
-        '200':
-          description: rates a recipe reachable only through another users private
-            match
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      title:
-                        type: string
-                      description:
-                        type: string
-                      cuisine:
-                        type: string
-                      course:
-                        type: string
-                      difficulty:
-                        type: integer
-                      flavor_profile:
-                        type: object
-                        properties:
-                          sweet:
-                            type: integer
-                          salty:
-                            type: integer
-                          sour:
-                            type: integer
-                          spicy:
-                            type: integer
-                          bitter:
-                            type: integer
-                          umami:
-                            type: integer
-                        required:
-                        - sweet
-                        - salty
-                        - sour
-                        - spicy
-                        - bitter
-                        - umami
-                      ingredients:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                            quantity:
-                              type: string
-                            unit:
-                              type: string
-                            core:
-                              type: boolean
-                          required:
-                          - name
-                          - quantity
-                          - unit
-                          - core
-                      steps:
-                        type: array
-                        items:
-                          type: string
-                      thumbnail_url:
-                        nullable: true
-                      channel_name:
-                        type: string
-                      prep_time_minutes:
-                        nullable: true
-                      cook_time_minutes:
-                        nullable: true
-                      servings:
-                        nullable: true
-                      community_rating:
-                        nullable: true
-                      community_ratings_count:
-                        type: integer
-                      like_count:
-                        type: integer
-                      view_count:
-                        type: integer
-                      external_video_id:
-                        type: string
-                      your_rating:
-                        type: integer
-                      dietary_tags:
-                        type: array
-                        items: {}
-                    required:
-                    - id
-                    - title
-                    - description
-                    - cuisine
-                    - course
-                    - difficulty
-                    - flavor_profile
-                    - ingredients
-                    - steps
-                    - thumbnail_url
-                    - channel_name
-                    - prep_time_minutes
-                    - cook_time_minutes
-                    - servings
-                    - community_rating
-                    - community_ratings_count
-                    - like_count
-                    - view_count
-                    - external_video_id
-                    - your_rating
-                required:
-                - data
-        '401':
-          description: requires authentication
-          content:
-            text/plain:
-              schema:
-                type: string
-        '404':
-          description: returns 404 when rating a recipe only in another users private
-            match
-          content:
-            text/html:
-              schema:
-                type: string
-        '422':
-          description: returns 422 for an out-of-range value
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/recommendations":
-    get:
-      summary: index
-      tags:
-      - Api::V1::Recommendation
-      responses:
-        '200':
-          description: includes the users own rating on a card they have rated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        title:
-                          type: string
-                        kind:
-                          type: string
-                        recipes:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              title:
-                                type: string
-                              thumbnail_url:
-                                type: string
-                                nullable: true
-                              community_rating:
-                                type: number
-                                format: float
-                                nullable: true
-                              community_ratings_count:
-                                type: integer
-                              total_time_minutes:
-                                type: integer
-                              servings:
-                                type: integer
-                                nullable: true
-                              difficulty:
-                                type: integer
-                              like_count:
-                                type: integer
-                              dietary_tags:
-                                type: array
-                                items:
-                                  type: string
-                              your_rating:
-                                nullable: true
-                                type: integer
-                            required:
-                            - id
-                            - title
-                            - thumbnail_url
-                            - community_rating
-                            - community_ratings_count
-                            - total_time_minutes
-                            - servings
-                            - difficulty
-                            - like_count
-                            - dietary_tags
-                            - your_rating
-                      required:
-                      - id
-                      - title
-                      - kind
-                      - recipes
-                required:
-                - data
-        '401':
-          description: requires authentication
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/reports":
     post:
       summary: create
       tags:
-      - Api::V1::Report
+      - Api::V1::Bookmark
       requestBody:
         content:
           application/x-www-form-urlencoded:
@@ -2046,16 +844,11 @@ paths:
               properties:
                 match_id:
                   type: string
-                reason:
-                  type: string
-                details:
-                  type: string
               required:
               - match_id
-              - reason
       responses:
         '201':
-          description: accepts reason 'other'
+          description: allows a user to bookmark their own private match
           content:
             application/json:
               schema:
@@ -2066,18 +859,21 @@ paths:
                     properties:
                       id:
                         type: string
+                      match_id:
+                        type: string
                     required:
                     - id
+                    - match_id
                 required:
                 - data
         '404':
-          description: returns 404 when reporting another user private match
+          description: returns 404 when bookmarking another user private match
           content:
             text/html:
               schema:
                 type: string
         '422':
-          description: returns 422 when details exceeds 1000 characters
+          description: rejects duplicate bookmarks with errors array
           content:
             application/json:
               schema:
@@ -2089,116 +885,11 @@ paths:
                       type: string
                 required:
                 - errors
-  "/api/v1/scans":
-    post:
-      summary: create
-      tags:
-      - Api::V1::Scan
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                image:
-                  type: string
-                  format: binary
-                ingredients:
-                  type: array
-                  items:
-                    type: string
-                courses:
-                  type: array
-                  items:
-                    type: string
-              required:
-              - image
-      responses:
-        '201':
-          description: increments the global counter on a successful scan
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      status:
-                        type: string
-                      rejection_reason:
-                        nullable: true
-                      match_id:
-                        nullable: true
-                      ingredients:
-                        nullable: true
-                    required:
-                    - id
-                    - status
-                    - rejection_reason
-                    - match_id
-                    - ingredients
-                required:
-                - data
-        '400':
-          description: rejects requests without an image
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-        '422':
-          description: rejects invalid courses
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-        '429':
-          description: returns 429 when the global cap is hit
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-        '503':
-          description: scan processing temporarily unavailable
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/scans/{id}":
+  "/api/v1/bookmarks/{id}":
     delete:
       summary: destroy
       tags:
-      - Api::V1::Scan
+      - Api::V1::Bookmark
       parameters:
       - name: id
         in: path
@@ -2207,370 +898,7 @@ paths:
           type: string
       responses:
         '204':
-          description: deletes the scan
-    get:
-      summary: show
-      tags:
-      - Api::V1::Scan
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: returns ingredients and match_id when completed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      status:
-                        type: string
-                      rejection_reason:
-                        nullable: true
-                      match_id:
-                        nullable: true
-                        type: string
-                      ingredients:
-                        nullable: true
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                            raw_name:
-                              type: string
-                            category:
-                              type: string
-                            confidence:
-                              type: number
-                              format: float
-                          required:
-                          - name
-                          - raw_name
-                          - category
-                          - confidence
-                    required:
-                    - id
-                    - status
-                    - rejection_reason
-                    - match_id
-                    - ingredients
-                required:
-                - data
-        '404':
-          description: returns 404 for another users scan
-          content:
-            text/html:
-              schema:
-                type: string
-  "/api/v1/sessions":
-    get:
-      summary: index
-      tags:
-      - Api::V1::Session
-      responses:
-        '200':
-          description: marks only the requesting session as current
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        created_at:
-                          type: string
-                        expires_at:
-                          type: string
-                        ip_address:
-                          nullable: true
-                        user_agent:
-                          nullable: true
-                        user_id:
-                          type: string
-                        updated_at:
-                          type: string
-                        current:
-                          type: boolean
-                      required:
-                      - id
-                      - created_at
-                      - expires_at
-                      - ip_address
-                      - user_agent
-                      - user_id
-                      - updated_at
-                      - current
-                required:
-                - data
-        '401':
-          description: rejects an invalid token
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/sessions/{id}":
-    delete:
-      summary: destroy
-      tags:
-      - Api::V1::Session
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: destroys the session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-                    required:
-                    - message
-                required:
-                - data
-        '401':
-          description: rejects an expired session token
-          content:
-            text/plain:
-              schema:
-                type: string
-    get:
-      summary: show
-      tags:
-      - Api::V1::Session
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: shows the session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      created_at:
-                        type: string
-                      expires_at:
-                        type: string
-                      ip_address:
-                        nullable: true
-                      user_agent:
-                        nullable: true
-                      user_id:
-                        type: string
-                      updated_at:
-                        type: string
-                      current:
-                        type: boolean
-                    required:
-                    - id
-                    - created_at
-                    - expires_at
-                    - ip_address
-                    - user_agent
-                    - user_id
-                    - updated_at
-                    - current
-                required:
-                - data
-  "/api/v1/sign_in":
-    post:
-      summary: create
-      tags:
-      - Api::V1::Session
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
-              required:
-              - email
-              - password
-      responses:
-        '201':
-          description: creates a session and returns a token
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      session:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          created_at:
-                            type: string
-                          expires_at:
-                            type: string
-                          ip_address:
-                            type: string
-                          updated_at:
-                            type: string
-                          user_agent:
-                            nullable: true
-                          user_id:
-                            type: string
-                        required:
-                        - id
-                        - created_at
-                        - expires_at
-                        - ip_address
-                        - updated_at
-                        - user_agent
-                        - user_id
-                      token:
-                        type: string
-                    required:
-                    - session
-                    - token
-                required:
-                - data
-        '401':
-          description: rejects invalid credentials
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/sign_out":
-    delete:
-      summary: destroy
-      tags:
-      - Api::V1::Session
-      responses:
-        '200':
-          description: destroys only the current session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-                    required:
-                    - message
-                required:
-                - data
-        '401':
-          description: rejects an invalid token
-          content:
-            text/plain:
-              schema:
-                type: string
-  "/api/v1/sign_up":
-    post:
-      summary: create
-      tags:
-      - Api::V1::Registration
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
-              required:
-              - email
-              - password
-      responses:
-        '201':
-          description: creates a user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      email:
-                        type: string
-                      display_name:
-                        nullable: true
-                      verified:
-                        type: boolean
-                      created_at:
-                        type: string
-                      updated_at:
-                        type: string
-                    required:
-                    - id
-                    - email
-                    - display_name
-                    - verified
-                    - created_at
-                    - updated_at
-                required:
-                - data
-        '400':
-          description: rejects a Gmail alias of an existing account without creating
-            a second user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
+          description: removes a bookmark
 components:
   securitySchemes:
     bearer_auth:

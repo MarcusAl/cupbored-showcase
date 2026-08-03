@@ -96,6 +96,10 @@ Versioned under `/api/v1/` with Bearer token auth (email/password plus Sign in w
 
 **[Browse the interactive API docs →](https://marcusal.github.io/cupbored-showcase/)**
 
+The published spec is a curated subset — enough to show the conventions above, not the full
+surface. `openapi.yaml` here is trimmed by hand after each regeneration from the private repo;
+re-copying the generated spec wholesale would republish every endpoint.
+
 ## Data Model
 
 Native PG enums, UUID primary keys on every table, counter caches on hot read columns, `pg_trgm` for trigram fuzzy search, composite indexes on lookup paths. Cascade rules enforced at the database, not Rails. State transitions for long-running operations live in enum columns rather than booleans.
