@@ -3,35 +3,805 @@ openapi: 3.0.3
 info:
   title: cupbored.ai API
   version: v1
-  description: |-
-    AI-powered ingredient detection and recipe matching platform.
-
-    This is a curated subset of the API, published to show the design conventions: bearer-token auth, a `{ data: ... }` success envelope, an `{ errors: [...] }` failure envelope, paginated collections, and `204 No Content` on destroy. The full surface is not documented publicly.
+  description: AI-powered ingredient detection and recipe matching platform
 servers:
 - url: https://api.cupbored.ai
   description: Production
 paths:
-  "/api/v1/sign_up":
+  "/api/v1/blocks":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Block
+      responses:
+        '200':
+          description: returns blocks most-recent-first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        blocked_user_id:
+                          type: string
+                        display_name:
+                          type: string
+                          nullable: true
+                      required:
+                      - id
+                      - blocked_user_id
+                      - display_name
+                required:
+                - data
     post:
       summary: create
       tags:
-      - Api::V1::Registration
+      - Api::V1::Block
       requestBody:
         content:
-          application/json:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                match_id:
+                  type: string
+                blocked_user_id:
+                  type: string
+      responses:
+        '201':
+          description: drops follows between the two accounts in both directions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      blocked_user_id:
+                        type: string
+                    required:
+                    - id
+                    - blocked_user_id
+                required:
+                - data
+        '404':
+          description: returns 404 when the match is another user private match
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: returns 422 when blocking the author of your own match
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/blocks/{id}":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Block
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: removes a block the current user owns and returns 204
+        '404':
+          description: returns 404 for a block the current user does not own
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/bookmarks":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Bookmark
+      responses:
+        '200':
+          description: does not trigger N+1 queries when returning multiple matches
+            with recipes and ingredients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        scan_id:
+                          type: string
+                        scan_image_url:
+                          type: string
+                        ingredient_count:
+                          type: integer
+                        recipe_count:
+                          type: integer
+                        saves_count:
+                          type: integer
+                        created_at:
+                          type: string
+                        user_display_name:
+                          nullable: true
+                          type: string
+                        public:
+                          type: boolean
+                        ingredients:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                nullable: true
+                                type: string
+                              thumbnail_aspect_ratio:
+                                type: number
+                                format: float
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                        saved:
+                          type: boolean
+                        bookmark_id:
+                          type: string
+                        user_avatar_url:
+                          nullable: true
+                          type: string
+                        owned:
+                          type: boolean
+                      required:
+                      - id
+                      - scan_id
+                      - scan_image_url
+                      - ingredient_count
+                      - recipe_count
+                      - saves_count
+                      - created_at
+                      - user_display_name
+                      - public
+                      - ingredients
+                      - recipes
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+    post:
+      summary: create
+      tags:
+      - Api::V1::Bookmark
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                match_id:
+                  type: string
+              required:
+              - match_id
+      responses:
+        '201':
+          description: allows a user to bookmark their own private match
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      match_id:
+                        type: string
+                    required:
+                    - id
+                    - match_id
+                required:
+                - data
+        '404':
+          description: returns 404 when bookmarking another user private match
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: rejects duplicate bookmarks with errors array
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/bookmarks/{id}":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Bookmark
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: removes a bookmark
+  "/api/v1/channels/{channel_id}/recipes":
+    get:
+      summary: recipes
+      tags:
+      - Api::V1::Channel
+      parameters:
+      - name: channel_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: paginates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        thumbnail_url:
+                          type: string
+                        thumbnail_aspect_ratio:
+                          type: number
+                          format: float
+                        community_rating:
+                          nullable: true
+                        community_ratings_count:
+                          type: integer
+                        total_time_minutes:
+                          type: integer
+                        servings:
+                          nullable: true
+                        difficulty:
+                          type: integer
+                        like_count:
+                          type: integer
+                        dietary_tags:
+                          type: array
+                          items: {}
+                        your_rating:
+                          nullable: true
+                        calories:
+                          type: integer
+                        bookmarked:
+                          type: boolean
+                        bookmark_id:
+                          nullable: true
+                      required:
+                      - id
+                      - title
+                      - thumbnail_url
+                      - thumbnail_aspect_ratio
+                      - community_rating
+                      - community_ratings_count
+                      - total_time_minutes
+                      - servings
+                      - difficulty
+                      - like_count
+                      - dietary_tags
+                      - your_rating
+                      - calories
+                      - bookmarked
+                      - bookmark_id
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+  "/api/v1/channels/{id}":
+    get:
+      summary: show
+      tags:
+      - Api::V1::Channel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: reports whether the current user follows it
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      handle:
+                        type: string
+                        nullable: true
+                      avatar_url:
+                        type: string
+                      recipes_count:
+                        type: integer
+                      subscriber_count:
+                        type: integer
+                      youtube_url:
+                        type: string
+                      instagram_url:
+                        type: string
+                        nullable: true
+                      followed:
+                        type: boolean
+                    required:
+                    - id
+                    - name
+                    - handle
+                    - avatar_url
+                    - recipes_count
+                    - subscriber_count
+                    - youtube_url
+                    - instagram_url
+                    - followed
+                required:
+                - data
+        '404':
+          description: returns 404 for an unknown channel
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/creators":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Creator
+      responses:
+        '200':
+          description: omits a channel with no recipes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                        name:
+                          type: string
+                        avatar_url:
+                          type: string
+                          nullable: true
+                        count:
+                          type: integer
+                        followed:
+                          type: boolean
+                      required:
+                      - id
+                      - type
+                      - name
+                      - avatar_url
+                      - count
+                      - followed
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '400':
+          description: rejects a type outside the allowlist
+          content:
+            text/html:
+              schema:
+                type: string
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+  "/api/v1/follows":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Follow
+      parameters:
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: never returns another user follows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        creator:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            type:
+                              type: string
+                            name:
+                              type: string
+                            avatar_url:
+                              type: string
+                              nullable: true
+                            count:
+                              type: integer
+                            followed:
+                              type: boolean
+                          required:
+                          - id
+                          - type
+                          - name
+                          - avatar_url
+                          - count
+                          - followed
+                      required:
+                      - id
+                      - creator
+                required:
+                - data
+    post:
+      summary: create
+      tags:
+      - Api::V1::Follow
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                followable_id:
+                  type: string
+              required:
+              - type
+              - followable_id
+      responses:
+        '201':
+          description: follows another user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      creator:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          type:
+                            type: string
+                          name:
+                            type: string
+                          avatar_url:
+                            type: string
+                          count:
+                            type: integer
+                          followed:
+                            type: boolean
+                        required:
+                        - id
+                        - type
+                        - name
+                        - avatar_url
+                        - count
+                        - followed
+                    required:
+                    - id
+                    - creator
+                required:
+                - data
+        '400':
+          description: returns 400 for a type outside the allowlist
+          content:
+            text/html:
+              schema:
+                type: string
+        '404':
+          description: returns 404 when the creator has blocked the current user
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: returns 422 when following the same creator twice
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/follows/{id}":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Follow
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: unfollows and returns 204
+        '404':
+          description: returns 404 for another user follow
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/identity/email":
+    patch:
+      summary: update
+      tags:
+      - Api::V1::Identity::Email
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
             schema:
               type: object
               properties:
                 email:
                   type: string
-                password:
+                password_challenge:
                   type: string
               required:
               - email
-              - password
+              - password_challenge
       responses:
-        '201':
-          description: creates a user
+        '200':
+          description: does not enqueue a verification email
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      display_name:
+                        nullable: true
+                      verified:
+                        type: boolean
+                      created_at:
+                        type: string
+                      updated_at:
+                        type: string
+                    required:
+                    - id
+                    - email
+                    - display_name
+                    - verified
+                    - created_at
+                    - updated_at
+                required:
+                - data
+        '401':
+          description: returns unauthorized
+          content:
+            text/plain:
+              schema:
+                type: string
+        '422':
+          description: returns unprocessable content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/identity/email_verification":
+    get:
+      summary: show
+      tags:
+      - Api::V1::Identity::EmailVerification
+      parameters:
+      - name: sid
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '204':
+          description: marks the user as verified
+        '400':
+          description: returns bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+    post:
+      summary: create
+      tags:
+      - Api::V1::Identity::EmailVerification
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        '204':
+          description: enqueues a verification email
+        '401':
+          description: returns unauthorized
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/identity/password_reset":
+    patch:
+      summary: update
+      tags:
+      - Api::V1::Identity::PasswordReset
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                sid:
+                  type: string
+                password:
+                  type: string
+                password_confirmation:
+                  type: string
+              required:
+              - sid
+              - password
+              - password_confirmation
+      responses:
+        '200':
+          description: returns the user data
           content:
             application/json:
               schema:
@@ -62,7 +832,7 @@ paths:
                 required:
                 - data
         '400':
-          description: rejects a Gmail alias of an existing account without creating a second user
+          description: returns bad request
           content:
             application/json:
               schema:
@@ -74,27 +844,669 @@ paths:
                       type: string
                 required:
                 - errors
-  "/api/v1/sign_in":
+        '422':
+          description: returns unprocessable content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
     post:
       summary: create
       tags:
-      - Api::V1::Session
+      - Api::V1::Identity::PasswordReset
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              required:
+              - email
+      responses:
+        '204':
+          description: returns no content without revealing the account state
+  "/api/v1/matches":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Match
+      responses:
+        '200':
+          description: includes matches from all authors when no blocks exist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        scan_id:
+                          type: string
+                        scan_image_url:
+                          type: string
+                        ingredient_count:
+                          type: integer
+                        recipe_count:
+                          type: integer
+                        saves_count:
+                          type: integer
+                        created_at:
+                          type: string
+                        user_display_name:
+                          nullable: true
+                          type: string
+                        public:
+                          type: boolean
+                        ingredients:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                nullable: true
+                                type: string
+                              thumbnail_aspect_ratio:
+                                type: number
+                                format: float
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                        saved:
+                          type: boolean
+                        bookmark_id:
+                          nullable: true
+                          type: string
+                        user_avatar_url:
+                          nullable: true
+                          type: string
+                        owned:
+                          type: boolean
+                      required:
+                      - id
+                      - scan_id
+                      - scan_image_url
+                      - ingredient_count
+                      - recipe_count
+                      - saves_count
+                      - created_at
+                      - user_display_name
+                      - public
+                      - ingredients
+                      - recipes
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '403':
+          description: returns 403 with suspended message when account is banned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+      parameters:
+      - name: cuisines
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: diets
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: flavors
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: max_difficulty
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: min_recipes
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: min_saves
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+  "/api/v1/matches/{id}":
+    get:
+      summary: show
+      tags:
+      - Api::V1::Match
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns 200 when the owner requests their own private match
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      public:
+                        type: boolean
+                      saves_count:
+                        type: integer
+                      created_at:
+                        type: string
+                      scan_id:
+                        type: string
+                      scan_image_url:
+                        type: string
+                      ingredients:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                          required:
+                          - name
+                      recipes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            title:
+                              type: string
+                            thumbnail_url:
+                              type: string
+                            community_rating:
+                              type: number
+                              format: float
+                            community_ratings_count:
+                              type: integer
+                            total_time_minutes:
+                              type: integer
+                            servings:
+                              type: integer
+                            difficulty:
+                              type: integer
+                            like_count:
+                              type: integer
+                            dietary_tags:
+                              type: array
+                              items: {}
+                            your_rating:
+                              nullable: true
+                            calories:
+                              type: integer
+                            rank:
+                              type: integer
+                            bookmarked:
+                              type: boolean
+                            bookmark_id:
+                              nullable: true
+                            thumbnail_aspect_ratio:
+                              type: number
+                              format: float
+                          required:
+                          - id
+                          - title
+                          - thumbnail_url
+                          - community_rating
+                          - community_ratings_count
+                          - total_time_minutes
+                          - servings
+                          - difficulty
+                          - like_count
+                          - dietary_tags
+                          - your_rating
+                          - calories
+                          - rank
+                      user_display_name:
+                        nullable: true
+                        type: string
+                      saved:
+                        type: boolean
+                      owned:
+                        type: boolean
+                      bookmark_id:
+                        nullable: true
+                        type: string
+                      user_avatar_url:
+                        nullable: true
+                        type: string
+                    required:
+                    - id
+                    - public
+                    - saves_count
+                    - created_at
+                    - scan_image_url
+                    - ingredients
+                    - recipes
+                    - user_display_name
+                    - saved
+                    - owned
+                required:
+                - data
+        '404':
+          description: returns 404 when a non-owner requests a private match
+          content:
+            text/html:
+              schema:
+                type: string
+    patch:
+      summary: update
+      tags:
+      - Api::V1::Match
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                public:
+                  type: string
+              required:
+              - public
+      responses:
+        '200':
+          description: sets match back to private
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      public:
+                        type: boolean
+                      saves_count:
+                        type: integer
+                      created_at:
+                        type: string
+                      scan_id:
+                        type: string
+                      scan_image_url:
+                        type: string
+                      ingredients:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                          required:
+                          - name
+                      recipes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            title:
+                              type: string
+                            thumbnail_url:
+                              nullable: true
+                              type: string
+                            community_rating:
+                              nullable: true
+                            community_ratings_count:
+                              type: integer
+                            total_time_minutes:
+                              type: integer
+                            servings:
+                              nullable: true
+                            difficulty:
+                              type: integer
+                            like_count:
+                              type: integer
+                            dietary_tags:
+                              type: array
+                              items: {}
+                            your_rating:
+                              nullable: true
+                            calories:
+                              type: integer
+                            rank:
+                              type: integer
+                            bookmarked:
+                              type: boolean
+                            bookmark_id:
+                              nullable: true
+                            thumbnail_aspect_ratio:
+                              type: number
+                              format: float
+                          required:
+                          - id
+                          - title
+                          - thumbnail_url
+                          - community_rating
+                          - community_ratings_count
+                          - total_time_minutes
+                          - servings
+                          - difficulty
+                          - like_count
+                          - dietary_tags
+                          - your_rating
+                          - calories
+                          - rank
+                      user_display_name:
+                        nullable: true
+                      saved:
+                        type: boolean
+                      owned:
+                        type: boolean
+                      bookmark_id:
+                        nullable: true
+                      user_avatar_url:
+                        nullable: true
+                        type: string
+                    required:
+                    - id
+                    - public
+                    - saves_count
+                    - created_at
+                    - scan_id
+                    - scan_image_url
+                    - ingredients
+                    - recipes
+                    - user_display_name
+                    - saved
+                    - owned
+                required:
+                - data
+        '404':
+          description: returns 404 for another users match
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/matches/{id}/scan_image":
+    get:
+      summary: scan_image
+      tags:
+      - Api::V1::Match
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: redirects to a presigned image URL for the current users own
+            private match
+          content:
+            text/html:
+              schema:
+                type: string
+        '404':
+          description: returns 404 when the scan has no image attached
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/notifications":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Notification
+      responses:
+        '200':
+          description: excludes a notification whose match is no longer public
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        kind:
+                          type: string
+                        title:
+                          type: string
+                        body:
+                          type: string
+                        target:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                            id:
+                              type: string
+                          required:
+                          - type
+                          - id
+                        actor:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            type:
+                              type: string
+                            name:
+                              type: string
+                            avatar_url:
+                              nullable: true
+                              type: string
+                            count:
+                              type: integer
+                            followed:
+                              type: boolean
+                          required:
+                          - id
+                          - type
+                          - name
+                          - avatar_url
+                          - count
+                          - followed
+                        read:
+                          type: boolean
+                        created_at:
+                          type: string
+                      required:
+                      - id
+                      - kind
+                      - title
+                      - body
+                      - target
+                      - actor
+                      - read
+                      - created_at
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/notifications/read_all":
+    post:
+      summary: read_all
+      tags:
+      - Api::V1::Notification
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        '204':
+          description: clears the unread count
+  "/api/v1/notifications/unread_count":
+    get:
+      summary: unread_count
+      tags:
+      - Api::V1::Notification
+      responses:
+        '200':
+          description: counts only unread, visible notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      unread_count:
+                        type: integer
+                    required:
+                    - unread_count
+                required:
+                - data
+  "/api/v1/notifications/{id}/read":
+    post:
+      summary: read
+      tags:
+      - Api::V1::Notification
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        '204':
+          description: leaves the rest of the feed unread
+        '404':
+          description: returns 404 for another user notification
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/oauth/apple":
+    post:
+      summary: apple
+      tags:
+      - Api::V1::Oauth
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                email:
+                identity_token:
                   type: string
-                password:
+                nonce:
+                  type: string
+                authorization_code:
                   type: string
               required:
-              - email
-              - password
+              - identity_token
+              - nonce
       responses:
         '201':
-          description: creates a session and returns a token
+          description: returns created without calling Apple::ExchangeAuthorizationCode
           content:
             application/json:
               schema:
@@ -136,7 +1548,7 @@ paths:
                 required:
                 - data
         '401':
-          description: rejects invalid credentials
+          description: rejects an invalid token
           content:
             application/json:
               schema:
@@ -148,14 +1560,37 @@ paths:
                       type: string
                 required:
                 - errors
-  "/api/v1/sign_out":
-    delete:
-      summary: destroy
+        '422':
+          description: rejects an identity whose email already has a password account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/oauth/google":
+    post:
+      summary: google
       tags:
-      - Api::V1::Session
+      - Api::V1::Oauth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identity_token:
+                  type: string
+              required:
+              - identity_token
       responses:
-        '200':
-          description: destroys only the current session
+        '201':
+          description: creates a session for a verified Google identity
           content:
             application/json:
               schema:
@@ -164,18 +1599,1460 @@ paths:
                   data:
                     type: object
                     properties:
-                      message:
+                      session:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          created_at:
+                            type: string
+                          expires_at:
+                            type: string
+                          ip_address:
+                            type: string
+                          updated_at:
+                            type: string
+                          user_agent:
+                            nullable: true
+                          user_id:
+                            type: string
+                        required:
+                        - id
+                        - created_at
+                        - expires_at
+                        - ip_address
+                        - updated_at
+                        - user_agent
+                        - user_id
+                      token:
                         type: string
                     required:
-                    - message
+                    - session
+                    - token
                 required:
                 - data
+        '401':
+          description: rejects an invalid token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+        '422':
+          description: rejects an identity whose email already has a password account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/password":
+    patch:
+      summary: update
+      tags:
+      - Api::V1::Password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                password_confirmation:
+                  type: string
+                password_challenge:
+                  type: string
+              required:
+              - password
+              - password_confirmation
+              - password_challenge
+      responses:
+        '200':
+          description: updates the password with a valid challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      password_digest:
+                        type: string
+                      email:
+                        type: string
+                      display_name:
+                        nullable: true
+                      canonical_email:
+                        type: string
+                      id:
+                        type: string
+                      created_at:
+                        type: string
+                      updated_at:
+                        type: string
+                      verified:
+                        type: boolean
+                    required:
+                    - password_digest
+                    - email
+                    - display_name
+                    - canonical_email
+                    - id
+                    - created_at
+                    - updated_at
+                    - verified
+                required:
+                - data
+        '400':
+          description: rejects an incorrect password challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
         '401':
           description: rejects an invalid token
           content:
             text/plain:
               schema:
                 type: string
+  "/api/v1/profile/avatar":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Profile::Avatar
+      responses:
+        '204':
+          description: removes the avatar
+    put:
+      summary: update
+      tags:
+      - Api::V1::Profile::Avatar
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+              required:
+              - avatar
+      responses:
+        '200':
+          description: replaces an existing avatar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      display_name:
+                        nullable: true
+                      verified:
+                        type: boolean
+                      created_at:
+                        type: string
+                      updated_at:
+                        type: string
+                      matchings_count:
+                        type: integer
+                      saved_count:
+                        type: integer
+                      oauth_user:
+                        type: boolean
+                      avatar_url:
+                        type: string
+                    required:
+                    - id
+                    - email
+                    - display_name
+                    - verified
+                    - created_at
+                    - updated_at
+                    - matchings_count
+                    - saved_count
+                    - oauth_user
+                    - avatar_url
+                required:
+                - data
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+        '422':
+          description: does not attach the file
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/profile/cuisine_preferences":
+    get:
+      summary: show
+      tags:
+      - Api::V1::Profile::CuisinePreference
+      responses:
+        '200':
+          description: includes the available cuisines list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      cuisines:
+                        type: array
+                        items:
+                          type: string
+                      available:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                    - cuisines
+                    - available
+                required:
+                - data
+    put:
+      summary: update
+      tags:
+      - Api::V1::Profile::CuisinePreference
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                cuisines:
+                  type: array
+                  items:
+                    type: string
+              required:
+              - cuisines
+      responses:
+        '200':
+          description: ignores invalid cuisines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      cuisines:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                    - cuisines
+                required:
+                - data
+  "/api/v1/profile/cuisine_suggestions":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Profile::CuisineSuggestion
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+              required:
+              - name
+      responses:
+        '201':
+          description: creates a cuisine suggestion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - id
+                    - name
+                required:
+                - data
+        '422':
+          description: rejects blank suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/profile/diet_preferences":
+    get:
+      summary: show
+      tags:
+      - Api::V1::Profile::DietPreference
+      responses:
+        '200':
+          description: includes the available diets list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      diets:
+                        type: array
+                        items:
+                          type: string
+                      available:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                    - diets
+                    - available
+                required:
+                - data
+        '401':
+          description: returns 401 for GET
+          content:
+            text/plain:
+              schema:
+                type: string
+    put:
+      summary: update
+      tags:
+      - Api::V1::Profile::DietPreference
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                diets:
+                  type: array
+                  items:
+                    type: string
+              required:
+              - diets
+      responses:
+        '200':
+          description: ignores invalid diets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      diets:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                    - diets
+                required:
+                - data
+        '401':
+          description: returns 401 for PUT
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/profile/matches":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Profile::Match
+      responses:
+        '200':
+          description: does not trigger N+1 queries when returning multiple matches
+            with recipes and ingredients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        scan_id:
+                          type: string
+                        scan_image_url:
+                          type: string
+                        ingredient_count:
+                          type: integer
+                        recipe_count:
+                          type: integer
+                        saves_count:
+                          type: integer
+                        created_at:
+                          type: string
+                        user_display_name:
+                          nullable: true
+                        public:
+                          type: boolean
+                        ingredients:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                nullable: true
+                                type: string
+                              thumbnail_aspect_ratio:
+                                type: number
+                                format: float
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                        saved:
+                          type: boolean
+                        bookmark_id:
+                          nullable: true
+                          type: string
+                        user_avatar_url:
+                          nullable: true
+                          type: string
+                        owned:
+                          type: boolean
+                      required:
+                      - id
+                      - scan_id
+                      - scan_image_url
+                      - ingredient_count
+                      - recipe_count
+                      - saves_count
+                      - created_at
+                      - user_display_name
+                      - public
+                      - ingredients
+                      - recipes
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '401':
+          description: returns 401 when unauthenticated
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/profile/user":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Profile::User
+      responses:
+        '204':
+          description: does not call Apple::RevokeTokens
+        '422':
+          description: keeps the account on an incorrect challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+    get:
+      summary: show
+      tags:
+      - Api::V1::Profile::User
+      responses:
+        '200':
+          description: does not include other users' bookmarks in saved_count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      display_name:
+                        type: string
+                        nullable: true
+                      verified:
+                        type: boolean
+                      created_at:
+                        type: string
+                      updated_at:
+                        type: string
+                      matchings_count:
+                        type: integer
+                      saved_count:
+                        type: integer
+                      oauth_user:
+                        type: boolean
+                      avatar_url:
+                        nullable: true
+                        type: string
+                    required:
+                    - id
+                    - email
+                    - display_name
+                    - verified
+                    - created_at
+                    - updated_at
+                    - matchings_count
+                    - saved_count
+                    - oauth_user
+                required:
+                - data
+        '401':
+          description: returns 401 when unauthenticated
+          content:
+            text/plain:
+              schema:
+                type: string
+    patch:
+      summary: update
+      tags:
+      - Api::V1::Profile::User
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+              required:
+              - display_name
+      responses:
+        '200':
+          description: returns 200 with the updated display_name and user id, and
+            persists the change
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      display_name:
+                        type: string
+                    required:
+                    - id
+                    - display_name
+                required:
+                - data
+        '422':
+          description: rejects a duplicate display_name case-insensitively with errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/push_token":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::PushToken
+      responses:
+        '204':
+          description: leaves another account device registered
+    post:
+      summary: create
+      tags:
+      - Api::V1::PushToken
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                platform:
+                  type: string
+              required:
+              - token
+              - platform
+      responses:
+        '201':
+          description: moves a token that was registered to another account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                    required:
+                    - id
+                required:
+                - data
+        '422':
+          description: rejects an unknown platform
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/recipe_bookmarks":
+    get:
+      summary: index
+      tags:
+      - Api::V1::RecipeBookmark
+      responses:
+        '200':
+          description: does not include recipes the user has not bookmarked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        thumbnail_url:
+                          nullable: true
+                          type: string
+                        community_rating:
+                          nullable: true
+                        community_ratings_count:
+                          type: integer
+                        total_time_minutes:
+                          type: integer
+                        servings:
+                          nullable: true
+                        difficulty:
+                          type: integer
+                        like_count:
+                          type: integer
+                        dietary_tags:
+                          type: array
+                          items: {}
+                        your_rating:
+                          nullable: true
+                        calories:
+                          type: integer
+                        bookmarked:
+                          type: boolean
+                        bookmark_id:
+                          type: string
+                        thumbnail_aspect_ratio:
+                          type: number
+                          format: float
+                      required:
+                      - id
+                      - title
+                      - thumbnail_url
+                      - community_rating
+                      - community_ratings_count
+                      - total_time_minutes
+                      - servings
+                      - difficulty
+                      - like_count
+                      - dietary_tags
+                      - your_rating
+                      - calories
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      summary: create
+      tags:
+      - Api::V1::RecipeBookmark
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                recipe_id:
+                  type: string
+              required:
+              - recipe_id
+      responses:
+        '201':
+          description: creates a bookmark wrapped in a data key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      recipe_id:
+                        type: string
+                    required:
+                    - id
+                    - recipe_id
+                required:
+                - data
+        '404':
+          description: returns 404 for an unknown recipe
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: rejects a duplicate bookmark with an errors array
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/recipe_bookmarks/{id}":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::RecipeBookmark
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: removes the bookmark
+  "/api/v1/recipes":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Recipe
+      parameters:
+      - name: courses
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: diets
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: max_calories
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: min_calories
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: orders by shortest total time when sorted by quickest
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        thumbnail_url:
+                          nullable: true
+                          type: string
+                        community_rating:
+                          nullable: true
+                          type: number
+                          format: float
+                        community_ratings_count:
+                          type: integer
+                        total_time_minutes:
+                          type: integer
+                        servings:
+                          nullable: true
+                          type: integer
+                        difficulty:
+                          type: integer
+                        like_count:
+                          type: integer
+                        dietary_tags:
+                          type: array
+                          items:
+                            type: string
+                        your_rating:
+                          nullable: true
+                          type: integer
+                        calories:
+                          type: integer
+                        bookmarked:
+                          type: boolean
+                        bookmark_id:
+                          nullable: true
+                          type: string
+                        thumbnail_aspect_ratio:
+                          type: number
+                          format: float
+                      required:
+                      - id
+                      - title
+                      - thumbnail_url
+                      - community_rating
+                      - community_ratings_count
+                      - total_time_minutes
+                      - servings
+                      - difficulty
+                      - like_count
+                      - dietary_tags
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/recipes/{id}":
+    get:
+      summary: show
+      tags:
+      - Api::V1::Recipe
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns a recipe reachable only through another users private
+            match
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      cuisine:
+                        type: string
+                      course:
+                        type: string
+                      difficulty:
+                        type: integer
+                      flavor_profile:
+                        type: object
+                        properties:
+                          sweet:
+                            type: integer
+                          salty:
+                            type: integer
+                          sour:
+                            type: integer
+                          spicy:
+                            type: integer
+                          bitter:
+                            type: integer
+                          umami:
+                            type: integer
+                        required:
+                        - sweet
+                        - salty
+                        - sour
+                        - spicy
+                        - bitter
+                        - umami
+                      ingredients:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            quantity:
+                              type: string
+                              nullable: true
+                            unit:
+                              type: string
+                              nullable: true
+                            core:
+                              type: boolean
+                          required:
+                          - name
+                          - quantity
+                          - unit
+                          - core
+                      steps:
+                        type: array
+                        items:
+                          type: string
+                      thumbnail_url:
+                        nullable: true
+                        type: string
+                      channel_name:
+                        type: string
+                      prep_time_minutes:
+                        nullable: true
+                        type: integer
+                      cook_time_minutes:
+                        nullable: true
+                        type: integer
+                      servings:
+                        nullable: true
+                        type: integer
+                      community_rating:
+                        type: number
+                        format: float
+                        nullable: true
+                      community_ratings_count:
+                        type: integer
+                      like_count:
+                        type: integer
+                      view_count:
+                        type: integer
+                      external_video_id:
+                        type: string
+                      your_rating:
+                        nullable: true
+                        type: integer
+                      dietary_tags:
+                        type: array
+                        items: {}
+                      calories:
+                        type: integer
+                      bookmarked:
+                        type: boolean
+                      bookmark_id:
+                        nullable: true
+                        type: string
+                      thumbnail_aspect_ratio:
+                        type: number
+                        format: float
+                    required:
+                    - id
+                    - title
+                    - description
+                    - cuisine
+                    - course
+                    - difficulty
+                    - flavor_profile
+                    - ingredients
+                    - steps
+                    - thumbnail_url
+                    - channel_name
+                    - prep_time_minutes
+                    - cook_time_minutes
+                    - servings
+                required:
+                - data
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: returns 404 for a nonexistent recipe
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/recipes/{id}/rating":
+    put:
+      summary: rating
+      tags:
+      - Api::V1::Recipe
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                value:
+                  type: string
+              required:
+              - value
+      responses:
+        '200':
+          description: rates a recipe reachable only through another users private
+            match
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      cuisine:
+                        type: string
+                      course:
+                        type: string
+                      difficulty:
+                        type: integer
+                      flavor_profile:
+                        type: object
+                        properties:
+                          sweet:
+                            type: integer
+                          salty:
+                            type: integer
+                          sour:
+                            type: integer
+                          spicy:
+                            type: integer
+                          bitter:
+                            type: integer
+                          umami:
+                            type: integer
+                        required:
+                        - sweet
+                        - salty
+                        - sour
+                        - spicy
+                        - bitter
+                        - umami
+                      ingredients:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            quantity:
+                              type: string
+                              nullable: true
+                            unit:
+                              type: string
+                              nullable: true
+                            core:
+                              type: boolean
+                          required:
+                          - name
+                          - quantity
+                          - unit
+                          - core
+                      steps:
+                        type: array
+                        items:
+                          type: string
+                      thumbnail_url:
+                        nullable: true
+                        type: string
+                      channel_name:
+                        type: string
+                      prep_time_minutes:
+                        nullable: true
+                      cook_time_minutes:
+                        nullable: true
+                      servings:
+                        nullable: true
+                      community_rating:
+                        nullable: true
+                      community_ratings_count:
+                        type: integer
+                      like_count:
+                        type: integer
+                      view_count:
+                        type: integer
+                      external_video_id:
+                        type: string
+                      your_rating:
+                        type: integer
+                      dietary_tags:
+                        type: array
+                        items: {}
+                      calories:
+                        type: integer
+                      bookmarked:
+                        type: boolean
+                      bookmark_id:
+                        nullable: true
+                      thumbnail_aspect_ratio:
+                        type: number
+                        format: float
+                    required:
+                    - id
+                    - title
+                    - description
+                    - cuisine
+                    - course
+                    - difficulty
+                    - flavor_profile
+                    - ingredients
+                    - steps
+                    - thumbnail_url
+                    - channel_name
+                    - prep_time_minutes
+                    - cook_time_minutes
+                    - servings
+                    - community_rating
+                    - community_ratings_count
+                    - like_count
+                    - view_count
+                    - external_video_id
+                    - your_rating
+                required:
+                - data
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: returns 404 when rating a recipe only in another users private
+            match
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: returns 422 for an out-of-range value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/recommendations":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Recommendation
+      responses:
+        '200':
+          description: includes the users own rating on a card they have rated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        kind:
+                          type: string
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                type: string
+                                nullable: true
+                              community_rating:
+                                type: number
+                                format: float
+                                nullable: true
+                              community_ratings_count:
+                                type: integer
+                              total_time_minutes:
+                                type: integer
+                              servings:
+                                type: integer
+                                nullable: true
+                              difficulty:
+                                type: integer
+                              like_count:
+                                type: integer
+                              dietary_tags:
+                                type: array
+                                items:
+                                  type: string
+                              your_rating:
+                                nullable: true
+                                type: integer
+                              calories:
+                                type: integer
+                              bookmarked:
+                                type: boolean
+                              bookmark_id:
+                                nullable: true
+                                type: string
+                              thumbnail_aspect_ratio:
+                                type: number
+                                format: float
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                            - community_rating
+                            - community_ratings_count
+                            - total_time_minutes
+                            - servings
+                            - difficulty
+                            - like_count
+                            - dietary_tags
+                            - your_rating
+                            - calories
+                      required:
+                      - id
+                      - title
+                      - kind
+                      - recipes
+                required:
+                - data
+        '401':
+          description: requires authentication
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/reports":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Report
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                match_id:
+                  type: string
+                reason:
+                  type: string
+                details:
+                  type: string
+                reported_user_id:
+                  type: string
+              required:
+              - reason
+      responses:
+        '201':
+          description: accepts reason 'other'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                    required:
+                    - id
+                required:
+                - data
+        '404':
+          description: returns 404 when reporting another user private match
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: returns 422 when details exceeds 1000 characters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
   "/api/v1/scans":
     post:
       summary: create
@@ -359,14 +3236,14 @@ paths:
             text/html:
               schema:
                 type: string
-  "/api/v1/matches":
+  "/api/v1/sessions":
     get:
       summary: index
       tags:
-      - Api::V1::Match
+      - Api::V1::Session
       responses:
         '200':
-          description: includes matches from all authors when no blocks exist
+          description: marks only the requesting session as current
           content:
             application/json:
               schema:
@@ -379,517 +3256,42 @@ paths:
                       properties:
                         id:
                           type: string
-                        scan_id:
-                          type: string
-                        scan_image_url:
-                          type: string
-                        ingredient_count:
-                          type: integer
-                        recipe_count:
-                          type: integer
-                        saves_count:
-                          type: integer
                         created_at:
                           type: string
-                        user_display_name:
-                          nullable: true
+                        expires_at:
                           type: string
-                        public:
+                        ip_address:
+                          nullable: true
+                        user_agent:
+                          nullable: true
+                        user_id:
+                          type: string
+                        updated_at:
+                          type: string
+                        current:
                           type: boolean
-                        ingredients:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              name:
-                                type: string
-                            required:
-                            - name
-                        recipes:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              title:
-                                type: string
-                              thumbnail_url:
-                                nullable: true
-                                type: string
-                            required:
-                            - id
-                            - title
-                            - thumbnail_url
                       required:
                       - id
-                      - scan_id
-                      - scan_image_url
-                      - ingredient_count
-                      - recipe_count
-                      - saves_count
                       - created_at
-                      - user_display_name
-                      - public
-                      - ingredients
-                      - recipes
-                  pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                      pages:
-                        type: integer
-                      count:
-                        type: integer
-                    required:
-                    - page
-                    - pages
-                    - count
+                      - expires_at
+                      - ip_address
+                      - user_agent
+                      - user_id
+                      - updated_at
+                      - current
                 required:
                 - data
-                - pagination
-        '403':
-          description: returns 403 with suspended message when account is banned
+        '401':
+          description: rejects an invalid token
           content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-      parameters:
-      - name: cuisines
-        in: query
-        required: false
-        schema:
-          type: array
-          items:
-            type: string
-      - name: diets
-        in: query
-        required: false
-        schema:
-          type: array
-          items:
-            type: string
-      - name: flavors
-        in: query
-        required: false
-        schema:
-          type: array
-          items:
-            type: string
-      - name: max_difficulty
-        in: query
-        required: false
-        schema:
-          type: integer
-      - name: min_recipes
-        in: query
-        required: false
-        schema:
-          type: integer
-      - name: min_saves
-        in: query
-        required: false
-        schema:
-          type: integer
-      - name: q
-        in: query
-        required: false
-        schema:
-          type: string
-      - name: sort
-        in: query
-        required: false
-        schema:
-          type: string
-  "/api/v1/matches/{id}":
-    get:
-      summary: show
-      tags:
-      - Api::V1::Match
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: returns 200 when the owner requests their own private match
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      public:
-                        type: boolean
-                      saves_count:
-                        type: integer
-                      created_at:
-                        type: string
-                      scan_id:
-                        type: string
-                      scan_image_url:
-                        type: string
-                      ingredients:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                          required:
-                          - name
-                      recipes:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            title:
-                              type: string
-                            thumbnail_url:
-                              type: string
-                            community_rating:
-                              type: number
-                              format: float
-                            community_ratings_count:
-                              type: integer
-                            total_time_minutes:
-                              type: integer
-                            servings:
-                              type: integer
-                            difficulty:
-                              type: integer
-                            like_count:
-                              type: integer
-                            dietary_tags:
-                              type: array
-                              items: {}
-                            your_rating:
-                              nullable: true
-                            rank:
-                              type: integer
-                          required:
-                          - id
-                          - title
-                          - thumbnail_url
-                          - community_rating
-                          - community_ratings_count
-                          - total_time_minutes
-                          - servings
-                          - difficulty
-                          - like_count
-                          - dietary_tags
-                          - your_rating
-                          - rank
-                      user_display_name:
-                        nullable: true
-                        type: string
-                      saved:
-                        type: boolean
-                      owned:
-                        type: boolean
-                    required:
-                    - id
-                    - public
-                    - saves_count
-                    - created_at
-                    - scan_image_url
-                    - ingredients
-                    - recipes
-                    - user_display_name
-                    - saved
-                    - owned
-                required:
-                - data
-        '404':
-          description: returns 404 when a non-owner requests a private match
-          content:
-            text/html:
+            text/plain:
               schema:
                 type: string
-    patch:
-      summary: update
-      tags:
-      - Api::V1::Match
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                public:
-                  type: string
-              required:
-              - public
-      responses:
-        '200':
-          description: sets match back to private
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      public:
-                        type: boolean
-                      saves_count:
-                        type: integer
-                      created_at:
-                        type: string
-                      scan_id:
-                        type: string
-                      scan_image_url:
-                        type: string
-                      ingredients:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                          required:
-                          - name
-                      recipes:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            title:
-                              type: string
-                            thumbnail_url:
-                              nullable: true
-                            community_rating:
-                              nullable: true
-                            community_ratings_count:
-                              type: integer
-                            total_time_minutes:
-                              type: integer
-                            servings:
-                              nullable: true
-                            difficulty:
-                              type: integer
-                            like_count:
-                              type: integer
-                            dietary_tags:
-                              type: array
-                              items: {}
-                            your_rating:
-                              nullable: true
-                            rank:
-                              type: integer
-                          required:
-                          - id
-                          - title
-                          - thumbnail_url
-                          - community_rating
-                          - community_ratings_count
-                          - total_time_minutes
-                          - servings
-                          - difficulty
-                          - like_count
-                          - dietary_tags
-                          - your_rating
-                          - rank
-                      user_display_name:
-                        nullable: true
-                      saved:
-                        type: boolean
-                      owned:
-                        type: boolean
-                    required:
-                    - id
-                    - public
-                    - saves_count
-                    - created_at
-                    - scan_id
-                    - scan_image_url
-                    - ingredients
-                    - recipes
-                    - user_display_name
-                    - saved
-                    - owned
-                required:
-                - data
-        '404':
-          description: returns 404 for another users match
-          content:
-            text/html:
-              schema:
-                type: string
-  "/api/v1/bookmarks":
-    get:
-      summary: index
-      tags:
-      - Api::V1::Bookmark
-      responses:
-        '200':
-          description: does not trigger N+1 queries when returning multiple matches with recipes and ingredients
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        scan_id:
-                          type: string
-                        scan_image_url:
-                          type: string
-                        ingredient_count:
-                          type: integer
-                        recipe_count:
-                          type: integer
-                        saves_count:
-                          type: integer
-                        created_at:
-                          type: string
-                        user_display_name:
-                          nullable: true
-                        public:
-                          type: boolean
-                        ingredients:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              name:
-                                type: string
-                            required:
-                            - name
-                        recipes:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              title:
-                                type: string
-                              thumbnail_url:
-                                nullable: true
-                                type: string
-                            required:
-                            - id
-                            - title
-                            - thumbnail_url
-                      required:
-                      - id
-                      - scan_id
-                      - scan_image_url
-                      - ingredient_count
-                      - recipe_count
-                      - saves_count
-                      - created_at
-                      - user_display_name
-                      - public
-                      - ingredients
-                      - recipes
-                  pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                      pages:
-                        type: integer
-                      count:
-                        type: integer
-                    required:
-                    - page
-                    - pages
-                    - count
-                required:
-                - data
-                - pagination
-    post:
-      summary: create
-      tags:
-      - Api::V1::Bookmark
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                match_id:
-                  type: string
-              required:
-              - match_id
-      responses:
-        '201':
-          description: allows a user to bookmark their own private match
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      match_id:
-                        type: string
-                    required:
-                    - id
-                    - match_id
-                required:
-                - data
-        '404':
-          description: returns 404 when bookmarking another user private match
-          content:
-            text/html:
-              schema:
-                type: string
-        '422':
-          description: rejects duplicate bookmarks with errors array
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - errors
-  "/api/v1/bookmarks/{id}":
+  "/api/v1/sessions/{id}":
     delete:
       summary: destroy
       tags:
-      - Api::V1::Bookmark
+      - Api::V1::Session
       parameters:
       - name: id
         in: path
@@ -897,8 +3299,442 @@ paths:
         schema:
           type: string
       responses:
-        '204':
-          description: removes a bookmark
+        '200':
+          description: destroys the session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                    required:
+                    - message
+                required:
+                - data
+        '401':
+          description: rejects an expired session token
+          content:
+            text/plain:
+              schema:
+                type: string
+    get:
+      summary: show
+      tags:
+      - Api::V1::Session
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: shows the session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      created_at:
+                        type: string
+                      expires_at:
+                        type: string
+                      ip_address:
+                        nullable: true
+                      user_agent:
+                        nullable: true
+                      user_id:
+                        type: string
+                      updated_at:
+                        type: string
+                      current:
+                        type: boolean
+                    required:
+                    - id
+                    - created_at
+                    - expires_at
+                    - ip_address
+                    - user_agent
+                    - user_id
+                    - updated_at
+                    - current
+                required:
+                - data
+  "/api/v1/sign_in":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+              - email
+              - password
+      responses:
+        '201':
+          description: creates a session and returns a token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          created_at:
+                            type: string
+                          expires_at:
+                            type: string
+                          ip_address:
+                            type: string
+                          updated_at:
+                            type: string
+                          user_agent:
+                            nullable: true
+                          user_id:
+                            type: string
+                        required:
+                        - id
+                        - created_at
+                        - expires_at
+                        - ip_address
+                        - updated_at
+                        - user_agent
+                        - user_id
+                      token:
+                        type: string
+                    required:
+                    - session
+                    - token
+                required:
+                - data
+        '401':
+          description: rejects invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/sign_out":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Session
+      responses:
+        '200':
+          description: destroys only the current session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                    required:
+                    - message
+                required:
+                - data
+        '401':
+          description: rejects an invalid token
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/sign_up":
+    post:
+      summary: create
+      tags:
+      - Api::V1::Registration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+              - email
+              - password
+      responses:
+        '201':
+          description: creates a user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      display_name:
+                        nullable: true
+                      verified:
+                        type: boolean
+                      created_at:
+                        type: string
+                      updated_at:
+                        type: string
+                    required:
+                    - id
+                    - email
+                    - display_name
+                    - verified
+                    - created_at
+                    - updated_at
+                required:
+                - data
+        '400':
+          description: rejects a Gmail alias of an existing account without creating
+            a second user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
+  "/api/v1/suggested_creators":
+    get:
+      summary: index
+      tags:
+      - Api::V1::SuggestedCreator
+      responses:
+        '200':
+          description: spreads cuisines rather than filling the rail with one
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                        name:
+                          type: string
+                        avatar_url:
+                          type: string
+                          nullable: true
+                        count:
+                          type: integer
+                        followed:
+                          type: boolean
+                      required:
+                      - id
+                      - type
+                      - name
+                      - avatar_url
+                      - count
+                      - followed
+                required:
+                - data
+  "/api/v1/users/{id}":
+    get:
+      summary: show
+      tags:
+      - Api::V1::User
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: reports whether the current user follows them
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      display_name:
+                        nullable: true
+                        type: string
+                      avatar_url:
+                        nullable: true
+                        type: string
+                      matches_count:
+                        type: integer
+                      followed:
+                        type: boolean
+                    required:
+                    - id
+                    - display_name
+                    - avatar_url
+                    - matches_count
+                    - followed
+                required:
+                - data
+        '404':
+          description: returns 404 when they have blocked the current user
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/users/{user_id}/matches":
+    get:
+      summary: matches
+      tags:
+      - Api::V1::User
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: excludes the current user own private matches when viewing
+            their own profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        scan_id:
+                          type: string
+                        scan_image_url:
+                          type: string
+                        ingredient_count:
+                          type: integer
+                        recipe_count:
+                          type: integer
+                        saves_count:
+                          type: integer
+                        created_at:
+                          type: string
+                        user_display_name:
+                          nullable: true
+                          type: string
+                        user_avatar_url:
+                          nullable: true
+                        public:
+                          type: boolean
+                        ingredients:
+                          type: array
+                          items: {}
+                        recipes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              thumbnail_url:
+                                type: string
+                              thumbnail_aspect_ratio:
+                                type: number
+                                format: float
+                            required:
+                            - id
+                            - title
+                            - thumbnail_url
+                            - thumbnail_aspect_ratio
+                        saved:
+                          type: boolean
+                        bookmark_id:
+                          nullable: true
+                        owned:
+                          type: boolean
+                      required:
+                      - id
+                      - scan_id
+                      - scan_image_url
+                      - ingredient_count
+                      - recipe_count
+                      - saves_count
+                      - created_at
+                      - user_display_name
+                      - user_avatar_url
+                      - public
+                      - ingredients
+                      - recipes
+                      - saved
+                      - bookmark_id
+                      - owned
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+                      count:
+                        type: integer
+                    required:
+                    - page
+                    - pages
+                    - count
+                required:
+                - data
+                - pagination
+        '404':
+          description: returns 404 for a blocked creator
+          content:
+            text/html:
+              schema:
+                type: string
 components:
   securitySchemes:
     bearer_auth:
