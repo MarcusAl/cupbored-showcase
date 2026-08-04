@@ -93,7 +93,7 @@ structures, so a provider can be swapped without touching service logic.
 
 ## API Design
 
-Versioned under `/api/v1/` with Bearer token auth (email/password plus Sign in with Apple/Google). Consistent response shape: `{ "data": ... }` for success, `{ "errors": [...] }` for failures, `head :no_content` for destroys. Pagination via `pagy`.
+Versioned under `/api/v1/` with Bearer token auth (email/password plus Sign in with Apple/Google). Consistent response shape: `{ "data": ... }` for success, `{ "errors": [...] }` for failures, `head :no_content` for destroys. Pagination via `pagy` — offset for feeds, keyset (opaque cursor, no page numbers) for comment threads, where an infinite-scrolling list mutates under the reader and OFFSET would skip and repeat rows.
 
 **[Browse the interactive API docs →](https://marcusal.github.io/cupbored-showcase/)**
 
@@ -106,6 +106,18 @@ re-copying the generated spec wholesale would republish every endpoint.
 Native PG enums, UUID primary keys on every table, counter caches on hot read columns, `pg_trgm` for trigram fuzzy search, composite indexes on lookup paths. Cascade rules enforced at the database, not Rails. State transitions for long-running operations live in enum columns rather than booleans.
 
 A layer of immutable value objects (Ruby `Data`) wraps parsed external/AI payloads — each is the single source of truth for one shape, owning its own coercion and validation so raw primitives never leak across service boundaries; one round-trips through a `jsonb` column via a custom `ActiveRecord::Type`.
+
+## Moderated User Content
+
+Comments on matches and recipes post optimistically behind an asynchronous check. A comment is
+persisted immediately as `pending` — visible only to its author — and published or rejected by a
+background job, so the writer never waits on moderation and nothing unchecked is ever shown to
+anyone else. Edits are written to a separate `pending_body` column, leaving the live text in place
+while the edit is checked, so a rejected edit costs the author nothing.
+
+The check itself sits behind a single seam: the current implementation is a local wordlist matcher
+(Unicode NFKC normalisation, zero-width and bidi stripping, leetspeak folding, word-boundary
+matching) and an LLM-backed checker replaces it by swapping a constructor default.
 
 ## Background Processing
 
