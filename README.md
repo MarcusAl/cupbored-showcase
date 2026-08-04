@@ -4,11 +4,12 @@ A full-stack social recipe iOS/Android app for AI-powered ingredient detection a
 
 > Source is in a private repository. This showcase highlights the architecture, tech stack, and API design.
 
-<img width="180" alt="Screenshot 2026-07-31 at 17 11 00" src="https://github.com/user-attachments/assets/156d8bbb-bd7c-49ca-b448-4b0ae9d63f18" />
+<img width="180" alt="Screenshot 2026-08-04 at 13 31 21" src="https://github.com/user-attachments/assets/bb9a62ef-ae21-44e4-bcd2-ee4ce3ed9981" />
+<img width="180" alt="Screenshot 2026-08-04 at 13 33 25" src="https://github.com/user-attachments/assets/b016b4fa-3764-42fb-8259-5d748b22456d" />
+<img width="180" alt="Screenshot 2026-08-04 at 13 40 15" src="https://github.com/user-attachments/assets/47f62e31-df99-4abd-a5b7-7121b9d517fc" />
 <img width="180" alt="Screenshot 2026-07-31 at 17 17 34" src="https://github.com/user-attachments/assets/be70ff1d-bdb7-42e9-bed2-aa21ee0a1b88" />
-<img width="180" alt="Screenshot 2026-07-31 at 17 11 43" src="https://github.com/user-attachments/assets/d24786c4-4c01-4c0b-bbc4-d26918f4bd28" />
-<img width="180" alt="Screenshot 2026-07-31 at 17 12 24" src="https://github.com/user-attachments/assets/bcaed1d1-58f0-4ada-a5f2-881b4a50e152" />
-<img width="180" alt="Screenshot 2026-07-31 at 17 13 27" src="https://github.com/user-attachments/assets/4b7b1fcf-54ec-4f99-8ae8-2b378b26561d" />
+
+
 
 
 
