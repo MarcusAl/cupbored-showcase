@@ -2698,6 +2698,21 @@ paths:
                       thumbnail_aspect_ratio:
                         type: number
                         format: float
+                      channel:
+                        nullable: true
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          avatar_url:
+                            nullable: true
+                            type: string
+                        required:
+                        - id
+                        - name
+                        - avatar_url
                     required:
                     - id
                     - title
@@ -2853,6 +2868,20 @@ paths:
                       thumbnail_aspect_ratio:
                         type: number
                         format: float
+                      channel:
+                        nullable: true
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          avatar_url:
+                            type: string
+                        required:
+                        - id
+                        - name
+                        - avatar_url
                     required:
                     - id
                     - title
