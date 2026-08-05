@@ -109,17 +109,16 @@ A layer of immutable value objects (Ruby `Data`) wraps parsed external/AI payloa
 
 ## Moderated User Content
 
-Comments on matches and recipes post optimistically behind an asynchronous check. A comment is
-persisted immediately as `pending` — visible only to its author — and published or rejected by a
-background job, so the writer never waits on moderation and nothing unchecked is ever shown to
-anyone else. Edits are written to a separate `pending_body` column, leaving the live text in place
-while the edit is checked, so a rejected edit costs the author nothing.
+Comments on matches and recipes are screened in-request, so a comment that passes is live before the
+keyboard closes and one that doesn't is refused as a validation error rather than persisted. A
+background job re-checks every published comment afterwards and can only take one down, keeping the
+slower checks off the request path without ever letting them gate posting.
 
 The check itself sits behind a single injected seam, so the moderation strategy can be replaced
 without touching the pipeline around it.
 
-Threads are keyset-paginated and read through the mobile client's comment surfaces (a tab on match
-detail, a screen on recipe detail) with replies and likes.
+Threads are keyset-paginated and read through one shared client component, so a comment reads
+identically on a match and on a recipe, with replies and likes.
 
 ## Background Processing
 
