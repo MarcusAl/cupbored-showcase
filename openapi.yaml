@@ -703,7 +703,7 @@ paths:
               - body
       responses:
         '200':
-          description: shows the author their own pending edit
+          description: puts the edit live
           content:
             application/json:
               schema:
@@ -763,6 +763,19 @@ paths:
             text/html:
               schema:
                 type: string
+        '422':
+          description: returns 422 for an edit the inline screen rejects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
   "/api/v1/creators":
     get:
       summary: index
@@ -1482,6 +1495,10 @@ paths:
                         type: string
                       comments_count:
                         type: integer
+                      user_id:
+                        type: string
+                      user_matches_count:
+                        type: integer
                     required:
                     - id
                     - public
@@ -1619,6 +1636,10 @@ paths:
                         nullable: true
                         type: string
                       comments_count:
+                        type: integer
+                      user_id:
+                        type: string
+                      user_matches_count:
                         type: integer
                     required:
                     - id
