@@ -109,13 +109,14 @@ A layer of immutable value objects (Ruby `Data`) wraps parsed external/AI payloa
 
 ## Moderated User Content
 
-Comments on matches and recipes are screened in-request, so a comment that passes is live before the
-keyboard closes and one that doesn't is refused as a validation error rather than persisted. A
-background job re-checks every published comment afterwards and can only take one down, keeping the
-slower checks off the request path without ever letting them gate posting.
+Comments on matches and recipes are screened before they are stored, so a comment that passes is
+live before the keyboard closes and one that doesn't is refused as a validation error rather than
+persisted. Bodies are normalised ahead of the check, so what gets reviewed is what a reader will
+actually see.
 
-The check itself sits behind a single injected seam, so the moderation strategy can be replaced
-without touching the pipeline around it.
+The check sits behind a single injected seam, so the strategy can be replaced without touching the
+pipeline around it, and a takedown path stands ready behind a job for a strategy slow enough to
+belong off the request.
 
 Threads are keyset-paginated and read through one shared client component, so a comment reads
 identically on a match and on a recipe, with replies and likes.
