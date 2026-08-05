@@ -115,9 +115,11 @@ background job, so the writer never waits on moderation and nothing unchecked is
 anyone else. Edits are written to a separate `pending_body` column, leaving the live text in place
 while the edit is checked, so a rejected edit costs the author nothing.
 
-The check itself sits behind a single seam: the current implementation is a local wordlist matcher
-(Unicode NFKC normalisation, zero-width and bidi stripping, leetspeak folding, word-boundary
-matching) and an LLM-backed checker replaces it by swapping a constructor default.
+The check itself sits behind a single injected seam, so the moderation strategy can be replaced
+without touching the pipeline around it.
+
+Threads are keyset-paginated and read through the mobile client's comment surfaces (a tab on match
+detail, a screen on recipe detail) with replies and likes.
 
 ## Background Processing
 
