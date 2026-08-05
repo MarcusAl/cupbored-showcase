@@ -430,6 +430,339 @@ paths:
             text/html:
               schema:
                 type: string
+  "/api/v1/comments/{comment_id}/like":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::CommentLike
+      parameters:
+      - name: comment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: unlikes the comment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      body:
+                        type: string
+                      created_at:
+                        type: string
+                      edited:
+                        type: boolean
+                      status:
+                        type: string
+                      likes_count:
+                        type: integer
+                      replies_count:
+                        type: integer
+                      liked:
+                        type: boolean
+                      owned:
+                        type: boolean
+                      author:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          display_name:
+                            type: string
+                          avatar_url:
+                            nullable: true
+                            type: string
+                        required:
+                        - id
+                        - display_name
+                        - avatar_url
+                    required:
+                    - id
+                    - body
+                    - created_at
+                    - edited
+                    - status
+                    - likes_count
+                    - replies_count
+                    - liked
+                    - owned
+                    - author
+                required:
+                - data
+    post:
+      summary: create
+      tags:
+      - Api::V1::CommentLike
+      parameters:
+      - name: comment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        '200':
+          description: is idempotent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      body:
+                        type: string
+                      created_at:
+                        type: string
+                      edited:
+                        type: boolean
+                      status:
+                        type: string
+                      likes_count:
+                        type: integer
+                      replies_count:
+                        type: integer
+                      liked:
+                        type: boolean
+                      owned:
+                        type: boolean
+                      author:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          display_name:
+                            type: string
+                          avatar_url:
+                            nullable: true
+                            type: string
+                        required:
+                        - id
+                        - display_name
+                        - avatar_url
+                    required:
+                    - id
+                    - body
+                    - created_at
+                    - edited
+                    - status
+                    - likes_count
+                    - replies_count
+                    - liked
+                    - owned
+                    - author
+                required:
+                - data
+        '404':
+          description: returns 404 for a comment the requester cannot see
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/comments/{comment_id}/replies":
+    get:
+      summary: replies
+      tags:
+      - Api::V1::Comment
+      parameters:
+      - name: comment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: lists the replies chronologically
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        body:
+                          type: string
+                        created_at:
+                          type: string
+                        edited:
+                          type: boolean
+                        status:
+                          type: string
+                        likes_count:
+                          type: integer
+                        replies_count:
+                          type: integer
+                        liked:
+                          type: boolean
+                        owned:
+                          type: boolean
+                        author:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            display_name:
+                              type: string
+                            avatar_url:
+                              nullable: true
+                              type: string
+                          required:
+                          - id
+                          - display_name
+                          - avatar_url
+                      required:
+                      - id
+                      - body
+                      - created_at
+                      - edited
+                      - status
+                      - likes_count
+                      - replies_count
+                      - liked
+                      - owned
+                      - author
+                  pagination:
+                    type: object
+                    properties:
+                      next_cursor:
+                        nullable: true
+                      count:
+                        type: integer
+                    required:
+                    - next_cursor
+                    - count
+                required:
+                - data
+                - pagination
+        '404':
+          description: returns 404 for a comment the requester cannot see
+          content:
+            text/html:
+              schema:
+                type: string
+  "/api/v1/comments/{id}":
+    delete:
+      summary: destroy
+      tags:
+      - Api::V1::Comment
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: deletes the comment
+        '404':
+          description: returns 404 for another user comment
+          content:
+            text/html:
+              schema:
+                type: string
+    patch:
+      summary: update
+      tags:
+      - Api::V1::Comment
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+              required:
+              - body
+      responses:
+        '200':
+          description: shows the author their own pending edit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      body:
+                        type: string
+                      created_at:
+                        type: string
+                      edited:
+                        type: boolean
+                      status:
+                        type: string
+                      likes_count:
+                        type: integer
+                      replies_count:
+                        type: integer
+                      liked:
+                        type: boolean
+                      owned:
+                        type: boolean
+                      author:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          display_name:
+                            nullable: true
+                          avatar_url:
+                            nullable: true
+                            type: string
+                        required:
+                        - id
+                        - display_name
+                        - avatar_url
+                    required:
+                    - id
+                    - body
+                    - created_at
+                    - edited
+                    - status
+                    - likes_count
+                    - replies_count
+                    - liked
+                    - owned
+                    - author
+                required:
+                - data
+        '404':
+          description: returns 404 for another user comment
+          content:
+            text/html:
+              schema:
+                type: string
   "/api/v1/creators":
     get:
       summary: index
@@ -1147,6 +1480,8 @@ paths:
                       user_avatar_url:
                         nullable: true
                         type: string
+                      comments_count:
+                        type: integer
                     required:
                     - id
                     - public
@@ -1283,6 +1618,8 @@ paths:
                       user_avatar_url:
                         nullable: true
                         type: string
+                      comments_count:
+                        type: integer
                     required:
                     - id
                     - public
@@ -1328,6 +1665,204 @@ paths:
             text/html:
               schema:
                 type: string
+  "/api/v1/matches/{match_id}/comments":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Comment
+      parameters:
+      - name: match_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: pages with an opaque cursor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        body:
+                          type: string
+                        created_at:
+                          type: string
+                        edited:
+                          type: boolean
+                        status:
+                          type: string
+                        likes_count:
+                          type: integer
+                        replies_count:
+                          type: integer
+                        liked:
+                          type: boolean
+                        owned:
+                          type: boolean
+                        author:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            display_name:
+                              type: string
+                              nullable: true
+                            avatar_url:
+                              nullable: true
+                              type: string
+                          required:
+                          - id
+                          - display_name
+                          - avatar_url
+                      required:
+                      - id
+                      - body
+                      - created_at
+                      - edited
+                      - status
+                      - likes_count
+                      - replies_count
+                      - liked
+                      - owned
+                      - author
+                  pagination:
+                    type: object
+                    properties:
+                      next_cursor:
+                        nullable: true
+                      count:
+                        type: integer
+                    required:
+                    - next_cursor
+                    - count
+                required:
+                - data
+                - pagination
+        '404':
+          description: returns 404 for a nonexistent match
+          content:
+            text/html:
+              schema:
+                type: string
+    post:
+      summary: create
+      tags:
+      - Api::V1::Comment
+      parameters:
+      - name: match_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+                parent_id:
+                  type: string
+                status:
+                  type: string
+                likes_count:
+                  type: string
+              required:
+              - body
+      responses:
+        '201':
+          description: ignores a client-supplied likes_count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      body:
+                        type: string
+                      created_at:
+                        type: string
+                      edited:
+                        type: boolean
+                      status:
+                        type: string
+                      likes_count:
+                        type: integer
+                      replies_count:
+                        type: integer
+                      liked:
+                        type: boolean
+                      owned:
+                        type: boolean
+                      author:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          display_name:
+                            nullable: true
+                          avatar_url:
+                            nullable: true
+                            type: string
+                        required:
+                        - id
+                        - display_name
+                        - avatar_url
+                    required:
+                    - id
+                    - body
+                    - created_at
+                    - edited
+                    - status
+                    - likes_count
+                    - replies_count
+                    - liked
+                    - owned
+                    - author
+                required:
+                - data
+        '404':
+          description: returns 404 for a match the requester cannot see
+          content:
+            text/html:
+              schema:
+                type: string
+        '422':
+          description: returns 422 for a body over the limit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - errors
   "/api/v1/notifications":
     get:
       summary: index
@@ -1335,7 +1870,7 @@ paths:
       - Api::V1::Notification
       responses:
         '200':
-          description: excludes a notification whose match is no longer public
+          description: reports whether the recipient follows a comment actor
           content:
             application/json:
               schema:
@@ -1360,6 +1895,8 @@ paths:
                             type:
                               type: string
                             id:
+                              type: string
+                            comment_id:
                               type: string
                           required:
                           - type
@@ -1387,6 +1924,7 @@ paths:
                           - avatar_url
                           - count
                           - followed
+                          nullable: true
                         read:
                           type: boolean
                         created_at:
@@ -2713,6 +3251,8 @@ paths:
                         - id
                         - name
                         - avatar_url
+                      comments_count:
+                        type: integer
                     required:
                     - id
                     - title
@@ -2882,6 +3422,8 @@ paths:
                         - id
                         - name
                         - avatar_url
+                      comments_count:
+                        type: integer
                     required:
                     - id
                     - title
@@ -2931,6 +3473,86 @@ paths:
                       type: string
                 required:
                 - errors
+  "/api/v1/recipes/{recipe_id}/comments":
+    get:
+      summary: index
+      tags:
+      - Api::V1::Comment
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: lists comments on a recipe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        body:
+                          type: string
+                        created_at:
+                          type: string
+                        edited:
+                          type: boolean
+                        status:
+                          type: string
+                        likes_count:
+                          type: integer
+                        replies_count:
+                          type: integer
+                        liked:
+                          type: boolean
+                        owned:
+                          type: boolean
+                        author:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            display_name:
+                              type: string
+                            avatar_url:
+                              nullable: true
+                              type: string
+                          required:
+                          - id
+                          - display_name
+                          - avatar_url
+                      required:
+                      - id
+                      - body
+                      - created_at
+                      - edited
+                      - status
+                      - likes_count
+                      - replies_count
+                      - liked
+                      - owned
+                      - author
+                  pagination:
+                    type: object
+                    properties:
+                      next_cursor:
+                        nullable: true
+                      count:
+                        type: integer
+                    required:
+                    - next_cursor
+                    - count
+                required:
+                - data
+                - pagination
   "/api/v1/recommendations":
     get:
       summary: index
@@ -3044,6 +3666,8 @@ paths:
                   type: string
                 reported_user_id:
                   type: string
+                comment_id:
+                  type: string
               required:
               - reason
       responses:
@@ -3064,7 +3688,7 @@ paths:
                 required:
                 - data
         '404':
-          description: returns 404 when reporting another user private match
+          description: returns 404 when reporting a comment the reporter cannot see
           content:
             text/html:
               schema:
