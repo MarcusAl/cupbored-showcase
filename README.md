@@ -7,8 +7,9 @@ A full-stack social recipe iOS/Android app for AI-powered ingredient detection a
 <img width="180" alt="Screenshot 2026-08-07 at 20 58 39" src="https://github.com/user-attachments/assets/193c908a-be0e-43a5-bc5e-7610d76b4402" />
 <img width="180" alt="Screenshot 2026-08-07 at 21 02 59" src="https://github.com/user-attachments/assets/b90592f4-7288-4af8-9967-da120cff3a6c" />
 <img width="180" alt="Screenshot 2026-08-07 at 21 04 20 2" src="https://github.com/user-attachments/assets/ba0109f2-dc40-4412-9b68-ea47d50db463" />
+<img width="180" alt="Screenshot 2026-08-07 at 21 09 05" src="https://github.com/user-attachments/assets/cb435658-a2b0-4c16-8a22-e114d54117f6" />
 <img width="180" alt="Screenshot 2026-08-04 at 13 40 15" src="https://github.com/user-attachments/assets/47f62e31-df99-4abd-a5b7-7121b9d517fc" />
-<img width="1434" height="500" alt="Screenshot 2026-08-07 at 21 06 07" src="https://github.com/user-attachments/assets/a5b781de-3b51-430a-8bd0-34c10fa389c3" />
+
 
 
 
