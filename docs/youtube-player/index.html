@@ -13,7 +13,8 @@
   <!--
     Minimal first-party YouTube player page for the cupbored mobile app's walkthrough WebView.
     Why this exists: YouTube only autoplays an inline embed when the page is served from a real https
-    origin (GitHub Pages here). The app loads it as ...?v=<id>&mute=<0|1>. It is intentionally tiny and
+    origin (GitHub Pages here). The app loads it as ...?v=<id>&mute=<0|1>, or as ...?warm=1 once at
+    startup to prime the cache. It is intentionally tiny and
     self-contained — the only third-party scripts are YouTube's own, the video id is strictly validated
     before it touches the embed URL, and the page can only post {type:'ready'|'error'} back to the app.
   -->
@@ -31,6 +32,17 @@
       var params = new URLSearchParams(window.location.search);
       var id = params.get('v') || '';
       var mute = params.get('mute') === '1' ? 1 : 0;
+
+      // Warm-up load (?warm=1), which the app does once at startup in an offscreen WebView. It
+      // fetches YouTube's IFrame API so the first real player starts from cache rather than paying
+      // for it while someone waits on a black frame. No id, no embed, no playback, nothing posted
+      // back — the only purpose is to fill the WebView's HTTP cache.
+      if (params.get('warm') === '1') {
+        var warmTag = document.createElement('script');
+        warmTag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(warmTag);
+        return;
+      }
 
       // Only a real 11-character YouTube id is ever interpolated into the embed URL.
       if (!/^[A-Za-z0-9_-]{11}$/.test(id)) {
