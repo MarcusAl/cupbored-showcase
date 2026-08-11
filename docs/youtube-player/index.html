@@ -50,11 +50,15 @@
         return;
       }
 
+      // autoplay=0 is the app's preload mode: the neighbouring page in the recipe pager loads the
+      // embed for its video offscreen so the per-video assets are cached before anyone swipes to it.
+      var autoplay = params.get('autoplay') === '0' ? 0 : 1;
+
       var origin = window.location.origin;
       var iframe = document.getElementById('yt');
       iframe.src =
         'https://www.youtube.com/embed/' + id +
-        '?autoplay=1&mute=' + mute +
+        '?autoplay=' + autoplay + '&mute=' + mute +
         '&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=' + encodeURIComponent(origin);
 
       // Attach the IFrame API to the already-autoplaying iframe purely to surface ready/error to the app.
