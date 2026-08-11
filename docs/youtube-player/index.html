@@ -65,9 +65,19 @@
       var tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       document.head.appendChild(tag);
+      // Play/pause commands, injected by the app. The recipe pager keeps the neighbouring pages'
+      // players mounted and paused, so landing on one is a command to an already-loaded player
+      // rather than a fresh embed to fetch — which is the whole of the wait it replaces. Defined
+      // before the API attaches so an early call is a no-op rather than a crash.
+      var ytPlayer = null;
+      window.cupbored = {
+        play: function () { try { if (ytPlayer) ytPlayer.playVideo(); } catch (e) {} },
+        pause: function () { try { if (ytPlayer) ytPlayer.pauseVideo(); } catch (e) {} }
+      };
+
       window.onYouTubeIframeAPIReady = function () {
         try {
-          new YT.Player('yt', {
+          ytPlayer = new YT.Player('yt', {
             events: {
               onReady: function () { post({ type: 'ready' }); },
               onError: function (e) { post({ type: 'error', code: e && e.data }); }
