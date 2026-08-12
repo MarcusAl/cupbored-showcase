@@ -90,6 +90,25 @@
                 if (desired === 'pause') { try { ytPlayer.pauseVideo(); } catch (e) {} }
                 else if (desired === 'play') { try { ytPlayer.playVideo(); } catch (e) {} }
                 post({ type: 'ready' });
+
+                // Unmuted autoplay, with a fallback rather than an assumption. A WKWebView told not
+                // to require a user gesture DOES allow audio, unlike Safari — but only the device
+                // can say so, and being wrong must not cost the video. If it has not started
+                // shortly after becoming ready, mute and start it: the muted video is what we would
+                // have had anyway, and the app is told which it got.
+                if (desired !== 'pause' && mute === 0) {
+                  setTimeout(function () {
+                    try {
+                      if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+                        post({ type: 'audio', muted: false });
+                        return;
+                      }
+                      ytPlayer.mute();
+                      ytPlayer.playVideo();
+                      post({ type: 'audio', muted: true });
+                    } catch (e) {}
+                  }, 900);
+                }
               },
               onError: function (e) { post({ type: 'error', code: e && e.data }); }
             }
