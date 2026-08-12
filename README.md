@@ -33,7 +33,7 @@ A full-stack social recipe iOS/Android app for AI-powered ingredient detection a
 | **Deployment** | Kamal 2 — zero-downtime Docker deploys to EC2 |
 | **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
 | **Local Infra** | floci for local AWS emulation |
-| **Mobile** | React Native (Expo SDK 56, Expo Router v4, TypeScript strict) |
+| **Mobile** | React Native (Expo SDK 57, Expo Router v4, TypeScript strict) |
 | **Mobile state** | TanStack Query; end-to-end generated API types (OpenAPI → openapi-typescript) |
 
 ## Architecture
@@ -72,17 +72,25 @@ throughput is observable and processing can be paused at runtime without a redep
 
 ## Mobile Client
 
-A full React Native app (Expo SDK 56, Expo Router v4, TypeScript strict) that consumes the Rails API. Types are generated end-to-end: the OpenAPI spec is itself generated from request specs via rspec-openapi, and `openapi-typescript` turns it into typed client hooks — the spec and the API cannot drift independently.
+A full React Native app (Expo SDK 57, Expo Router v4, TypeScript strict) that consumes the Rails API. Types are generated end-to-end: the OpenAPI spec is itself generated from request specs via rspec-openapi, and `openapi-typescript` turns it into typed client hooks — the spec and the API cannot drift independently.
 
 **Core flow:** photograph a fridge or cupboard → AI ingredient detection → ranked recipe matches → recipe detail with flavor profile, difficulty, and guided cooking stages. A persistent walkthrough video plays through the recipe screen and into cook mode without restarting across swipes.
 
 **Discovery surfaces:** home feed with recent matches, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine and dietary preference management, which feeds directly into matching.
+
+**Social:** follows, comments, and likes on both recipes and matches. Like state is applied to the query cache in place rather than by invalidating it — a feed driven by an invalidated query is replaced mid-gesture, which moves the list under the reader's thumb.
 
 **Auth:** email/password and OAuth (Sign in with Apple, Sign in with Google), with the backend as the sole issuer of application sessions.
 
 **Account management:** profile editing (display name and a customizable avatar — uploaded, cropped to a square, and resized client-side; author avatars surface on match cards across the feeds), active session management, and in-app account deletion.
 
 **Compliance & safety:** content reporting, user blocking, in-app community guidelines, App Store-compliant in-app account deletion, and access-controlled delivery of user-uploaded images.
+
+## List Performance
+
+The feeds are image-heavy and scroll deep, and the two containers were chosen against measurements rather than reputation. The masonry feed is a recycling list: it keys each view holder by a recycled key and reconciles an existing subtree against the next record, so scrolling costs prop mutations rather than mounts. A plain virtualized list, by contrast, destroys rows behind the viewport and re-mounts them on the way back, which makes per-row construction cost — host view count, and one SVG view per glyph — the thing that decides how a screen feels. Halving the glyphs on a card halved the views in a row.
+
+The corollary is that render-count experiments run under the test renderer can mislead, because the React Compiler is applied to the shipped bundle and not to the test transform — a measurement taken without it describes a build that never ships.
 
 ## Service Layer
 
@@ -104,9 +112,15 @@ The published spec is a curated subset — enough to show the conventions above,
 surface. `openapi.yaml` here is trimmed by hand after each regeneration from the private repo;
 re-copying the generated spec wholesale would republish every endpoint.
 
+## Ranking
+
+Popularity is recomputed on a schedule from in-app engagement — likes, saves, ratings and comments — with the source platform's own counters divided down to a tie-breaker rather than a verdict, so a cold catalog still orders sensibly while real engagement overtakes it. The formula lives in one class that expresses it twice, in Ruby for the value a record is created with and in Arel for the set-based recompute, so the two cannot drift. It is Arel rather than interpolated SQL: a formula assembled from weights and column names still has to be audited as if it were user input, and this way there is nothing to audit.
+
+Which of a match's recipes fronts its card is also decided server-side, across the whole page: matches drawn from the same pantry share recipes, so each card takes the highest-ranked one no earlier card has claimed. Done in the client it depended on what happened to be mounted, and two clients rendered one feed differently.
+
 ## Data Model
 
-Native PG enums, UUID primary keys on every table, counter caches on hot read columns, `pg_trgm` for trigram fuzzy search, composite indexes on lookup paths. Cascade rules enforced at the database, not Rails. State transitions for long-running operations live in enum columns rather than booleans.
+Native PG enums, UUID primary keys on every table, counter caches on hot read columns, `pg_trgm` for trigram fuzzy search, composite indexes on lookup paths. Join tables that only record that a pair exists — likes, for instance — take the pair itself as a composite primary key instead of a surrogate UUID, so a double insert is impossible in the database rather than in application code, and there is no second index over the same rows. Cascade rules enforced at the database, not Rails. State transitions for long-running operations live in enum columns rather than booleans.
 
 A layer of immutable value objects (Ruby `Data`) wraps parsed external/AI payloads — each is the single source of truth for one shape, owning its own coercion and validation so raw primitives never leak across service boundaries; one round-trips through a `jsonb` column via a custom `ActiveRecord::Type`.
 
