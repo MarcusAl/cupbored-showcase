@@ -75,8 +75,41 @@
       // has nothing to act on.
       var ytPlayer = null;
       var desired = null;
+
+      /**
+       * Starts playback with sound, and settles for muted only if that did not actually start.
+       *
+       * Every start goes through here, not just the first. The page that loads with autoplay=1 in
+       * its URL gets sound for free; a page STARTED BY COMMAND is a different path, and YouTube's
+       * own player mutes itself there when it cannot prove a user gesture — which is why the first
+       * recipe played aloud and every one swiped to afterwards was silent.
+       *
+       * unMute() before play, then check: if it did not start, that device really does refuse, so
+       * mute and start it. A muted video is what we had before any of this, and it is better than a
+       * still frame.
+       */
+      function startPlayback() {
+        if (!ytPlayer) return;
+        try {
+          ytPlayer.unMute();
+          ytPlayer.playVideo();
+        } catch (e) {}
+        setTimeout(function () {
+          if (desired !== 'play') return;
+          try {
+            if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING && !ytPlayer.isMuted()) {
+              post({ type: 'audio', muted: false });
+              return;
+            }
+            ytPlayer.mute();
+            ytPlayer.playVideo();
+            post({ type: 'audio', muted: true });
+          } catch (e) {}
+        }, 900);
+      }
+
       window.cupbored = {
-        play: function () { desired = 'play'; try { if (ytPlayer) ytPlayer.playVideo(); } catch (e) {} },
+        play: function () { desired = 'play'; startPlayback(); },
         pause: function () { desired = 'pause'; try { if (ytPlayer) ytPlayer.pauseVideo(); } catch (e) {} }
       };
 
@@ -85,29 +118,18 @@
           ytPlayer = new YT.Player('yt', {
             events: {
               onReady: function () {
-                // Honour whatever the app asked for while this was still loading. A page that was
-                // left before it was ready must not start playing now that it is.
-                if (desired === 'pause') { try { ytPlayer.pauseVideo(); } catch (e) {} }
-                else if (desired === 'play') { try { ytPlayer.playVideo(); } catch (e) {} }
                 post({ type: 'ready' });
 
-                // Unmuted autoplay, with a fallback rather than an assumption. A WKWebView told not
-                // to require a user gesture DOES allow audio, unlike Safari — but only the device
-                // can say so, and being wrong must not cost the video. If it has not started
-                // shortly after becoming ready, mute and start it: the muted video is what we would
-                // have had anyway, and the app is told which it got.
-                if (desired !== 'pause' && mute === 0) {
-                  setTimeout(function () {
-                    try {
-                      if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
-                        post({ type: 'audio', muted: false });
-                        return;
-                      }
-                      ytPlayer.mute();
-                      ytPlayer.playVideo();
-                      post({ type: 'audio', muted: true });
-                    } catch (e) {}
-                  }, 900);
+                // Honour whatever the app asked for while this was still loading. A page left before
+                // it was ready must not start playing now that it is; one that was asked to play, or
+                // that loaded with autoplay in its URL, goes through the same start as every other.
+                if (desired === 'pause') {
+                  try { ytPlayer.pauseVideo(); } catch (e) {}
+                  return;
+                }
+                if (desired === 'play' || (autoplay === 1 && mute === 0)) {
+                  desired = 'play';
+                  startPlayback();
                 }
               },
               onError: function (e) { post({ type: 'error', code: e && e.data }); }
