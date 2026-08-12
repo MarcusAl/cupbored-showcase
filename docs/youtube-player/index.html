@@ -69,17 +69,28 @@
       // players mounted and paused, so landing on one is a command to an already-loaded player
       // rather than a fresh embed to fetch — which is the whole of the wait it replaces. Defined
       // before the API attaches so an early call is a no-op rather than a crash.
+      // `desired` is what the app last asked for, remembered even when it arrives before the player
+      // exists. Without it, a page swiped away from mid-load would autoplay to nobody the moment it
+      // finished — the app cannot un-ask, because a command sent to a player that is not there yet
+      // has nothing to act on.
       var ytPlayer = null;
+      var desired = null;
       window.cupbored = {
-        play: function () { try { if (ytPlayer) ytPlayer.playVideo(); } catch (e) {} },
-        pause: function () { try { if (ytPlayer) ytPlayer.pauseVideo(); } catch (e) {} }
+        play: function () { desired = 'play'; try { if (ytPlayer) ytPlayer.playVideo(); } catch (e) {} },
+        pause: function () { desired = 'pause'; try { if (ytPlayer) ytPlayer.pauseVideo(); } catch (e) {} }
       };
 
       window.onYouTubeIframeAPIReady = function () {
         try {
           ytPlayer = new YT.Player('yt', {
             events: {
-              onReady: function () { post({ type: 'ready' }); },
+              onReady: function () {
+                // Honour whatever the app asked for while this was still loading. A page that was
+                // left before it was ready must not start playing now that it is.
+                if (desired === 'pause') { try { ytPlayer.pauseVideo(); } catch (e) {} }
+                else if (desired === 'play') { try { ytPlayer.playVideo(); } catch (e) {} }
+                post({ type: 'ready' });
+              },
               onError: function (e) { post({ type: 'error', code: e && e.data }); }
             }
           });
