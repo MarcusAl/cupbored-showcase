@@ -77,35 +77,64 @@
       var desired = null;
 
       /**
-       * Starts playback with sound, and settles for muted only if that did not actually start.
+       * Starts playback with sound, and settles for muted only once the device has actually refused.
        *
        * Every start goes through here, not just the first. The page that loads with autoplay=1 in
        * its URL gets sound for free; a page STARTED BY COMMAND is a different path, and YouTube's
        * own player mutes itself there when it cannot prove a user gesture — which is why the first
        * recipe played aloud and every one swiped to afterwards was silent.
        *
-       * unMute() before play, then check: if it did not start, that device really does refuse, so
-       * mute and start it. A muted video is what we had before any of this, and it is better than a
-       * still frame.
+       * Deciding that on a single 900ms timer was wrong, and is what made the mute sporadic: a
+       * player that is BUFFERING has not refused anything, it is loading, and a preloaded neighbour
+       * started by command is routinely still buffering at 900ms. It got muted for being slow.
+       *
+       * So: poll, treat BUFFERING as success in progress, and only mute once the state has stayed
+       * un-started for the whole budget. The timer is also cancelled on re-entry — the app sends
+       * `play` twice by design (once when it becomes active, once when the page reports ready), and
+       * two overlapping checks meant one unmuting while the other muted, which is the flapping
+       * speaker icon.
+       *
+       * Once a page has proven it can play with sound, it never re-tests: `soundProven` short-
+       * circuits every later start, so paging back to an already-played video cannot re-mute it.
        */
+      var checkTimer = null;
+      var soundProven = false;
+      var GIVE_UP_AFTER_MS = 4000;
+      var POLL_EVERY_MS = 300;
+
       function startPlayback() {
         if (!ytPlayer) return;
+        if (checkTimer) { clearTimeout(checkTimer); checkTimer = null; }
         try {
           ytPlayer.unMute();
           ytPlayer.playVideo();
         } catch (e) {}
-        setTimeout(function () {
-          if (desired !== 'play') return;
-          try {
-            if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING && !ytPlayer.isMuted()) {
-              post({ type: 'audio', muted: false });
-              return;
-            }
-            ytPlayer.mute();
-            ytPlayer.playVideo();
-            post({ type: 'audio', muted: true });
-          } catch (e) {}
-        }, 900);
+        if (soundProven) return;
+
+        var waited = 0;
+        (function check() {
+          checkTimer = setTimeout(function () {
+            if (desired !== 'play') { checkTimer = null; return; }
+            waited += POLL_EVERY_MS;
+            try {
+              var state = ytPlayer.getPlayerState();
+              // Playing and audible: done, and never test again on this page.
+              if (state === YT.PlayerState.PLAYING && !ytPlayer.isMuted()) {
+                soundProven = true;
+                checkTimer = null;
+                post({ type: 'audio', muted: false });
+                return;
+              }
+              // Buffering is not a refusal — it is the thing working. Keep waiting.
+              if (waited < GIVE_UP_AFTER_MS) return check();
+
+              ytPlayer.mute();
+              ytPlayer.playVideo();
+              checkTimer = null;
+              post({ type: 'audio', muted: true });
+            } catch (e) { checkTimer = null; }
+          }, POLL_EVERY_MS);
+        })();
       }
 
       window.cupbored = {
