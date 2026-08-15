@@ -76,7 +76,7 @@ A full React Native app (Expo SDK 57, Expo Router v4, TypeScript strict) that co
 
 **Core flow:** photograph a fridge or cupboard → AI ingredient detection → ranked recipe matches → recipe detail with flavor profile, difficulty, and guided cooking stages. A persistent walkthrough video plays through the recipe screen and into cook mode without restarting across swipes.
 
-**Discovery surfaces:** home feed with recent matches, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine and dietary preference management, which feeds directly into matching.
+**Discovery surfaces:** a ranked home feed mixing the user's matches with catalog recipes, a two-mode explore screen (a paginated community match feed and a recipe browser, each with search), saved/history views, and per-user cuisine and dietary preference management, which feeds directly into matching.
 
 **Social:** follows, comments, and likes on both recipes and matches. Like state is applied to the query cache in place rather than by invalidating it — a feed driven by an invalidated query is replaced mid-gesture, which moves the list under the reader's thumb.
 
@@ -117,6 +117,16 @@ re-copying the generated spec wholesale would republish every endpoint.
 Popularity is recomputed on a schedule from in-app engagement — likes, saves, ratings and comments — with the source platform's own counters divided down to a tie-breaker rather than a verdict, so a cold catalog still orders sensibly while real engagement overtakes it. The formula lives in one class that expresses it twice, in Ruby for the value a record is created with and in Arel for the set-based recompute, so the two cannot drift. It is Arel rather than interpolated SQL: a formula assembled from weights and column names still has to be audited as if it were user input, and this way there is nothing to audit.
 
 Which of a match's recipes fronts its card is also decided server-side, across the whole page: matches drawn from the same pantry share recipes, so each card takes the highest-ranked one no earlier card has claimed. Done in the client it depended on what happened to be mounted, and two clients rendered one feed differently.
+
+### The home feed
+
+Two different record types — a user's matches and catalog recipes — are scored into one ordering by four additive signals: creators the user follows, how much of a recipe their detected pantry covers, their stated cuisines, and recency as a decaying tie-breaker. Additive rather than tiered, so a strong ingredient match in a preferred cuisine can outrank a weak follow instead of one creator's back catalog filling the feed.
+
+Coverage is scored by the same class the matching engine uses, so the feed and the matcher cannot disagree about what a well-covered recipe is. Reaching it cheaply is the interesting part: the naive candidate filter is a substring match on ingredient names, which asks a different question than the matcher does and pulls in enough false candidates to displace real ones out of a bounded pool. Ingredient rows instead carry the matcher's own normalized tokens in an indexed array column, so the database narrows on exactly the notion of "same ingredient" that the scoring pass will later apply — broad recall in SQL, precision in Ruby.
+
+**Paging a ranked feed cannot be an offset into a live query**, or content published mid-scroll makes a card appear twice or vanish between pages. Each response carries an opaque token identifying which ranking its page numbers index into. The token holds the instant the ranking was built as of and every candidate query filters on it, so the same token reproduces the same ordering from scratch — which makes the cache a pure optimization rather than a correctness dependency, and lets the whole feature run correctly with caching disabled. Discarding the token is what pull-to-refresh means, and refresh windows are quantized so a burst of pulls costs one ranking pass rather than one each.
+
+Ordering the result is a separate concern from scoring it. Ranking a pool purely by score clusters it — one ingredient term produced six near-identical recipes in a row — so entries take turns by creator, and the scarcer record type is weighted toward the front rather than spread evenly, since an even spread through a long feed still reads as scarcity.
 
 ## Data Model
 
