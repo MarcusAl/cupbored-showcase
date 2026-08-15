@@ -99,7 +99,15 @@
        */
       var checkTimer = null;
       var soundProven = false;
-      var GIVE_UP_AFTER_MS = 4000;
+      var unmuteRetried = false;
+      // How long a player may sit UNSTARTED before we call it a refusal. Unchanged from the original
+      // 900ms on purpose: when the device really has refused, the muted retry is what starts the
+      // video, and delaying it delays playback.
+      var REFUSAL_AFTER_MS = 900;
+      // How long a player that HAS started may take to prove it is audible. Nothing is waiting on
+      // this — the video is already playing or buffering behind YouTube's own spinner — so it costs
+      // no perceived latency.
+      var AUDIBLE_BUDGET_MS = 5000;
       var POLL_EVERY_MS = 300;
 
       function startPlayback() {
@@ -112,27 +120,48 @@
         if (soundProven) return;
 
         var waited = 0;
+        unmuteRetried = false;
         (function check() {
           checkTimer = setTimeout(function () {
-            if (desired !== 'play') { checkTimer = null; return; }
+            checkTimer = null;
+            if (desired !== 'play') return;
             waited += POLL_EVERY_MS;
             try {
               var state = ytPlayer.getPlayerState();
-              // Playing and audible: done, and never test again on this page.
-              if (state === YT.PlayerState.PLAYING && !ytPlayer.isMuted()) {
+              var playing = state === YT.PlayerState.PLAYING;
+              var started = playing || state === YT.PlayerState.BUFFERING;
+
+              if (playing && !ytPlayer.isMuted()) {
                 soundProven = true;
-                checkTimer = null;
                 post({ type: 'audio', muted: false });
                 return;
               }
-              // Buffering is not a refusal — it is the thing working. Keep waiting.
-              if (waited < GIVE_UP_AFTER_MS) return check();
 
-              ytPlayer.mute();
-              ytPlayer.playVideo();
-              checkTimer = null;
-              post({ type: 'audio', muted: true });
-            } catch (e) { checkTimer = null; }
+              // Never left the gate: the device refused the unmuted start, so mute and go NOW. This
+              // is the original fast path and the only one that gates playback.
+              if (!started && waited >= REFUSAL_AFTER_MS) {
+                ytPlayer.mute();
+                ytPlayer.playVideo();
+                post({ type: 'audio', muted: true });
+                return;
+              }
+
+              // Playing, but YouTube muted it anyway. One more unMute, then accept — it is already
+              // playing, so there is nothing to wait for.
+              if (playing && ytPlayer.isMuted()) {
+                if (!unmuteRetried) {
+                  unmuteRetried = true;
+                  ytPlayer.unMute();
+                } else {
+                  post({ type: 'audio', muted: true });
+                  return;
+                }
+              }
+
+              // Buffering is not a refusal — it is the thing working, behind YouTube's own spinner.
+              if (waited < AUDIBLE_BUDGET_MS) return check();
+              post({ type: 'audio', muted: ytPlayer.isMuted() });
+            } catch (e) {}
           }, POLL_EVERY_MS);
         })();
       }
