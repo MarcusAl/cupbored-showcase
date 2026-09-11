@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>cupbored · walkthrough player</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    #yt { border: 0; width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <!--
+    Minimal first-party YouTube player page for the cupbored mobile app's walkthrough WebView.
+    Why this exists: YouTube only autoplays an inline embed when the page is served from a real https
+    origin (GitHub Pages here). The app loads it as ...?v=<id>&mute=<0|1>, or as ...?warm=1 once at
+    startup to prime the cache. `cap` stops playback at a timestamp (the browse preview is a taste,
+    not the whole walkthrough) and `start` resumes a player the app had to rebuild. It is
+    intentionally tiny and
+    self-contained — the only third-party scripts are YouTube's own, the video id is strictly validated
+    before it touches the embed URL, and the page can only post {type:'ready'|'error'} back to the app.
+  -->
+  <iframe id="yt" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+  <script>
+    (function () {
+      function post(msg) {
+        try {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+          }
+        } catch (e) {}
+      }
+
+      var params = new URLSearchParams(window.location.search);
+      var id = params.get('v') || '';
+      var mute = params.get('mute') === '1' ? 1 : 0;
+
+      // Warm-up load (?warm=1), which the app does once at startup in an offscreen WebView. It
+      // fetches YouTube's IFrame API so the first real player starts from cache rather than paying
+      // for it while someone waits on a black frame. No id, no embed, no playback, nothing posted
+      // back — the only purpose is to fill the WebView's HTTP cache.
+      if (params.get('warm') === '1') {
+        var warmTag = document.createElement('script');
+        warmTag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(warmTag);
+        return;
+      }
+
+      // Only a real 11-character YouTube id is ever interpolated into the embed URL.
+      if (!/^[A-Za-z0-9_-]{11}$/.test(id)) {
+        post({ type: 'error', code: 'invalid_id' });
+        return;
+      }
+
+      // autoplay=0 is the app's preload mode: the neighbouring page in the recipe pager loads the
+      // embed for its video offscreen so the per-video assets are cached before anyone swipes to it.
+      var autoplay = params.get('autoplay') === '0' ? 0 : 1;
+
+      /**
+       * `cap` — pause at this many seconds in, and tell the app so it can dress the end.
+       *
+       * Deliberately NOT YouTube's own `end` parameter. `end` is part of the embed URL, and the app
+       * reuses ONE player element from its browse preview straight into the recipe detail — same
+       * WebView, same URL, only the frame resizes, which is why playback never restarts across that
+       * hand-off. Baking the limit into the URL would mean the detail could never play past it
+       * without reloading the embed, which is the exact restart the whole arrangement exists to
+       * avoid. So the cap is ours, and `resume()` lifts it in place.
+       *
+       * `start` — seek here on load. For a player the app had to REBUILD (a rotation re-lays out the
+       * pager and throws the page away), where there is no longer a paused player to resume.
+       */
+      var cap = parseInt(params.get('cap') || '', 10);
+      if (!(cap > 0)) cap = 0;
+      var startAt = parseInt(params.get('start') || '', 10);
+      if (!(startAt > 0)) startAt = 0;
+
+      var origin = window.location.origin;
+      var iframe = document.getElementById('yt');
+      iframe.src =
+        'https://www.youtube.com/embed/' + id +
+        '?autoplay=' + autoplay + '&mute=' + mute +
+        (startAt ? '&start=' + startAt : '') +
+        '&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=' + encodeURIComponent(origin);
+
+      // Attach the IFrame API to the already-autoplaying iframe purely to surface ready/error to the app.
+      var tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+      // Play/pause commands, injected by the app. The recipe pager keeps the neighbouring pages'
+      // players mounted and paused, so landing on one is a command to an already-loaded player
+      // rather than a fresh embed to fetch — which is the whole of the wait it replaces. Defined
+      // before the API attaches so an early call is a no-op rather than a crash.
+      // `desired` is what the app last asked for, remembered even when it arrives before the player
+      // exists. Without it, a page swiped away from mid-load would autoplay to nobody the moment it
+      // finished — the app cannot un-ask, because a command sent to a player that is not there yet
+      // has nothing to act on.
+      var ytPlayer = null;
+      var desired = null;
+
+      /**
+       * Starts playback with sound, and settles for muted only once the device has actually refused.
+       *
+       * Every start goes through here, not just the first. The page that loads with autoplay=1 in
+       * its URL gets sound for free; a page STARTED BY COMMAND is a different path, and YouTube's
+       * own player mutes itself there when it cannot prove a user gesture — which is why the first
+       * recipe played aloud and every one swiped to afterwards was silent.
+       *
+       * Deciding that on a single 900ms timer was wrong, and is what made the mute sporadic: a
+       * player that is BUFFERING has not refused anything, it is loading, and a preloaded neighbour
+       * started by command is routinely still buffering at 900ms. It got muted for being slow.
+       *
+       * So: poll, treat BUFFERING as success in progress, and only mute once the state has stayed
+       * un-started for the whole budget. The timer is also cancelled on re-entry — the app sends
+       * `play` twice by design (once when it becomes active, once when the page reports ready), and
+       * two overlapping checks meant one unmuting while the other muted, which is the flapping
+       * speaker icon.
+       *
+       * Once a page has proven it can play with sound, it never re-tests: `soundProven` short-
+       * circuits every later start, so paging back to an already-played video cannot re-mute it.
+       */
+      var checkTimer = null;
+      var soundProven = false;
+      // Declared up here rather than beside the ticker that sets it: `startPlayback` reads it, and a
+      // reader should not have to trust `var` hoisting to see that the read is safe.
+      var capped = false;
+      var unmuteRetried = false;
+      // How long a player may sit UNSTARTED before we call it a refusal. Unchanged from the original
+      // 900ms on purpose: when the device really has refused, the muted retry is what starts the
+      // video, and delaying it delays playback.
+      var REFUSAL_AFTER_MS = 900;
+      // How long a player that HAS started may take to prove it is audible. Nothing is waiting on
+      // this — the video is already playing or buffering behind YouTube's own spinner — so it costs
+      // no perceived latency.
+      var AUDIBLE_BUDGET_MS = 5000;
+      var POLL_EVERY_MS = 300;
+
+      function startPlayback() {
+        if (!ytPlayer) return;
+        // A capped player stays where it stopped. The app sends `play` whenever a page becomes the
+        // active one, and without this, swiping back to a preview that had already finished its
+        // taste would start it for the one tick it takes the ticker to stop it again.
+        if (capped) return;
+        if (checkTimer) { clearTimeout(checkTimer); checkTimer = null; }
+        try {
+          ytPlayer.unMute();
+          ytPlayer.playVideo();
+        } catch (e) {}
+        if (soundProven) return;
+
+        var waited = 0;
+        unmuteRetried = false;
+        (function check() {
+          checkTimer = setTimeout(function () {
+            checkTimer = null;
+            if (desired !== 'play') return;
+            waited += POLL_EVERY_MS;
+            try {
+              var state = ytPlayer.getPlayerState();
+              var playing = state === YT.PlayerState.PLAYING;
+              var started = playing || state === YT.PlayerState.BUFFERING;
+
+              if (playing && !ytPlayer.isMuted()) {
+                soundProven = true;
+                post({ type: 'audio', muted: false });
+                return;
+              }
+
+              // Never left the gate: the device refused the unmuted start, so mute and go NOW. This
+              // is the original fast path and the only one that gates playback.
+              if (!started && waited >= REFUSAL_AFTER_MS) {
+                ytPlayer.mute();
+                ytPlayer.playVideo();
+                post({ type: 'audio', muted: true });
+                return;
+              }
+
+              // Playing, but YouTube muted it anyway. One more unMute, then accept — it is already
+              // playing, so there is nothing to wait for.
+              if (playing && ytPlayer.isMuted()) {
+                if (!unmuteRetried) {
+                  unmuteRetried = true;
+                  ytPlayer.unMute();
+                } else {
+                  post({ type: 'audio', muted: true });
+                  return;
+                }
+              }
+
+              // Buffering is not a refusal — it is the thing working, behind YouTube's own spinner.
+              if (waited < AUDIBLE_BUDGET_MS) return check();
+              post({ type: 'audio', muted: ytPlayer.isMuted() });
+            } catch (e) {}
+          }, POLL_EVERY_MS);
+        })();
+      }
+
+      /**
+       * The cap, and the app's clock.
+       *
+       * Its own interval rather than a branch inside the audio poll above: that loop is a settled
+       * piece of work with a lot of device behaviour encoded in it, it stops once sound is proven,
+       * and neither of those is true of this. They share nothing but the player handle.
+       *
+       * The position is posted back on a slow beat so the app can rebuild a player where the reader
+       * left it. Once every two seconds is enough to make a rebuild imperceptible and cheap enough
+       * to ignore — it is one small JSON message, not a frame loop.
+       */
+      var TICK_MS = 500;
+      var REPORT_EVERY_MS = 2000;
+      var ticker = null;
+      var sinceReport = 0;
+
+      function startTicker() {
+        if (ticker) return;
+        ticker = setInterval(function () {
+          if (!ytPlayer) return;
+          var at;
+          try { at = ytPlayer.getCurrentTime(); } catch (e) { return; }
+          if (typeof at !== 'number' || !isFinite(at)) return;
+
+          // Only while it is actually running. A preloaded neighbour sits paused at 0, and the app
+          // keeps two of those mounted either side of the page being watched — reporting their 0
+          // every couple of seconds would have let a paused player overwrite the very position the
+          // app is keeping in order to rebuild it.
+          var running = false;
+          try { running = ytPlayer.getPlayerState() === YT.PlayerState.PLAYING; } catch (e) {}
+
+          if (running) {
+            sinceReport += TICK_MS;
+            if (sinceReport >= REPORT_EVERY_MS) {
+              sinceReport = 0;
+              post({ type: 'time', seconds: Math.floor(at) });
+            }
+          }
+
+          if (cap && !capped && at >= cap) {
+            capped = true;
+            desired = 'pause';
+            try { ytPlayer.pauseVideo(); } catch (e) {}
+            post({ type: 'capped', seconds: Math.floor(at) });
+          }
+        }, TICK_MS);
+      }
+
+      window.cupbored = {
+        play: function () { desired = 'play'; startPlayback(); },
+        pause: function () { desired = 'pause'; try { if (ytPlayer) ytPlayer.pauseVideo(); } catch (e) {} },
+        // Lifts the cap in place — no seek, no reload, no re-buffer. The player is already sitting
+        // exactly where the reader left it, so opening the recipe is a limit being removed rather
+        // than a position being restored.
+        //
+        // It only PLAYS if we were the ones who stopped it. A viewer who paused with YouTube's own
+        // control and then opened the recipe was having playback forced back on against their own
+        // last instruction; lifting the limit is the whole job, and starting it again is only
+        // undoing our own pause.
+        resume: function () {
+          var wasCapped = capped;
+          cap = 0;
+          capped = false;
+          if (wasCapped) { desired = 'play'; startPlayback(); }
+        }
+      };
+
+      window.onYouTubeIframeAPIReady = function () {
+        try {
+          ytPlayer = new YT.Player('yt', {
+            events: {
+              onReady: function () {
+                post({ type: 'ready' });
+                startTicker();
+
+                // Honour whatever the app asked for while this was still loading. A page left before
+                // it was ready must not start playing now that it is; one that was asked to play, or
+                // that loaded with autoplay in its URL, goes through the same start as every other.
+                if (desired === 'pause') {
+                  try { ytPlayer.pauseVideo(); } catch (e) {}
+                  return;
+                }
+                if (desired === 'play' || (autoplay === 1 && mute === 0)) {
+                  desired = 'play';
+                  startPlayback();
+                }
+              },
+              onError: function (e) { post({ type: 'error', code: e && e.data }); }
+            }
+          });
+        } catch (e) {
+          // If the API can't attach, the raw iframe still plays — treat as ready so the app un-shimmers.
+          // Note what this costs: no player handle means no ticker, so on this path there is no cap
+          // and no position reported. The video plays on uncapped rather than not at all, which is
+          // the right way round, but it is why both are best-effort rather than guarantees.
+          post({ type: 'ready' });
+        }
+      };
+    })();
+  </script>
+</body>
+</html>
