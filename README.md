@@ -62,6 +62,12 @@ parsed from creators' own descriptions, which follow no agreed format and are va
 video's runtime; where a video has none, the interface falls back to an estimate and says so rather
 than presenting arithmetic as a marked moment.
 
+**Aggregates that cannot drift.** Counts shown on cards are resolved once per page through a single
+grouped query rather than cached in a column, wherever the thing being counted is a moderated subset
+— a counter column counts rows, and a row that is pending or withdrawn is not the same as one that is
+published. The cost is one query per page; the alternative is a number that is wrong in a way nothing
+detects.
+
 **Background processing.** Work is split across dedicated queues so slow media and ingest work can
 never starve interactive requests. Jobs are idempotent, with retries on transient external failures
 only.
