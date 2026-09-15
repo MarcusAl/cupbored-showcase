@@ -16,7 +16,8 @@
     origin (GitHub Pages here). The app loads it as ...?v=<id>&mute=<0|1>, or as ...?warm=1 once at
     startup to prime the cache. `cap` stops playback at a timestamp (the browse preview is a taste,
     not the whole walkthrough), `start` resumes a player the app had to rebuild, and
-    `window.cupbored.seek(seconds)` jumps to a moment for the recipe's chapter and step controls. It is
+    `window.cupbored.seek(seconds)` jumps to a moment for the recipe's chapter and step controls, and
+    `loop(from, to)` repeats one step's section of the video. It is
     intentionally tiny and
     self-contained — the only third-party scripts are YouTube's own, the video id is strictly validated
     before it touches the embed URL, and the page can only post {type:'ready'|'error'} back to the app.
@@ -124,6 +125,11 @@
       // Declared up here rather than beside the ticker that sets it: `startPlayback` reads it, and a
       // reader should not have to trust `var` hoisting to see that the read is safe.
       var capped = false;
+      // A section of the video to repeat, for the app's "loop this step" control. Null when off.
+      // Enforced by the same ticker as the cap, because it is the same question asked every beat:
+      // has playback passed a line it should not have.
+      var loopFrom = null;
+      var loopTo = null;
       var unmuteRetried = false;
       // How long a player may sit UNSTARTED before we call it a refusal. Unchanged from the original
       // 900ms on purpose: when the device really has refused, the muted retry is what starts the
@@ -234,6 +240,13 @@
             }
           }
 
+          // Back to the top of the section. `true` on seekTo lets YouTube seek before buffering
+          // finishes, which is what keeps a short loop from stalling at its own seam.
+          if (loopTo !== null && at >= loopTo) {
+            try { ytPlayer.seekTo(loopFrom, true); } catch (e) {}
+            return;
+          }
+
           if (cap && !capped && at >= cap) {
             capped = true;
             desired = 'pause';
@@ -260,6 +273,35 @@
           capped = false;
           if (wasCapped) { desired = 'play'; startPlayback(); }
         },
+        /**
+         * Repeat one section of the video until told otherwise.
+         *
+         * Lifts the cap for the same reason `seek` does: a loop inside a capped preview would be
+         * stopped by the ticker a moment after it started. Jumps to the start immediately rather
+         * than waiting for playback to reach the end of the section, because the control is pressed
+         * to watch that bit AGAIN.
+         *
+         * The bounds are validated here, not trusted: they arrive as text through injected
+         * JavaScript, and a `to` that is not past `from` would seek on every tick forever.
+         */
+        loop: function (from, to) {
+          var start = Math.max(0, Number(from));
+          var end = Number(to);
+          if (!isFinite(start) || !isFinite(end) || end <= start) return;
+          loopFrom = start;
+          loopTo = end;
+          cap = 0;
+          capped = false;
+          desired = 'play';
+          if (!ytPlayer) return;
+          try { ytPlayer.seekTo(start, true); } catch (e) {}
+          startPlayback();
+        },
+        // Leaves playback exactly where it is. Stopping a loop is not a reason to move the video.
+        clearLoop: function () {
+          loopFrom = null;
+          loopTo = null;
+        },
         // Jump to a moment in the walkthrough, for the app's chapter and step controls.
         //
         // Lifts the cap on the way, because a seek is an explicit request to be somewhere: leaving
@@ -274,6 +316,10 @@
           if (!isFinite(at) || !ytPlayer) return;
           cap = 0;
           capped = false;
+          // Asking to be somewhere else ends any loop: otherwise the next tick drags you back into
+          // the section you just chose to leave.
+          loopFrom = null;
+          loopTo = null;
           desired = 'play';
           try { ytPlayer.seekTo(at, true); } catch (e) {}
           startPlayback();
