@@ -31,9 +31,9 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 ## What it does
 
 Photograph a fridge or cupboard → ingredient detection → ranked recipe matches → a recipe with a
-guided cooking walkthrough. Around that: a ranked home feed, search and browse, saved and history
-views, cuisine and dietary preferences, cooks' profiles, follows, comments and likes, push
-notifications, and full account management.
+guided cooking walkthrough you can jump around in, step by step. Around that: a ranked home feed,
+search and browse, saved and history views, cuisine and dietary preferences, cooks' profiles,
+follows, comments and likes, push notifications, and full account management.
 
 Shipped to TestFlight on iOS.
 
@@ -51,6 +51,16 @@ every endpoint and a pagination strategy chosen per surface rather than globally
 **Type safety end to end.** The OpenAPI spec is generated from the API's own request specs, and the
 mobile client's types are generated from that spec — so the client and the server cannot drift
 apart without CI noticing.
+
+**Deriving structure from unstructured sources.** Recipes come from video, so much of the catalogue's
+structure is inferred rather than given. Dietary tags are derived from ingredients against a curated
+vocabulary with per-ingredient component metadata, and the derivation is proof-based: an ingredient
+the vocabulary cannot identify withholds every tag rather than guessing one, because a missing tag is
+safe where a wrong one is not. Matching against that vocabulary resolves the most specific name in a
+phrase, so an oyster mushroom is not a shellfish and rice flour is not gluten. Chapter markers are
+parsed from creators' own descriptions, which follow no agreed format and are validated against the
+video's runtime; where a video has none, the interface falls back to an estimate and says so rather
+than presenting arithmetic as a marked moment.
 
 **Background processing.** Work is split across dedicated queues so slow media and ingest work can
 never starve interactive requests. Jobs are idempotent, with retries on transient external failures

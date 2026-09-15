@@ -15,7 +15,8 @@
     Why this exists: YouTube only autoplays an inline embed when the page is served from a real https
     origin (GitHub Pages here). The app loads it as ...?v=<id>&mute=<0|1>, or as ...?warm=1 once at
     startup to prime the cache. `cap` stops playback at a timestamp (the browse preview is a taste,
-    not the whole walkthrough) and `start` resumes a player the app had to rebuild. It is
+    not the whole walkthrough), `start` resumes a player the app had to rebuild, and
+    `window.cupbored.seek(seconds)` jumps to a moment for the recipe's chapter and step controls. It is
     intentionally tiny and
     self-contained — the only third-party scripts are YouTube's own, the video id is strictly validated
     before it touches the embed URL, and the page can only post {type:'ready'|'error'} back to the app.
@@ -258,6 +259,24 @@
           cap = 0;
           capped = false;
           if (wasCapped) { desired = 'play'; startPlayback(); }
+        },
+        // Jump to a moment in the walkthrough, for the app's chapter and step controls.
+        //
+        // Lifts the cap on the way, because a seek is an explicit request to be somewhere: leaving
+        // the browse preview's limit in place would let the ticker stop playback again a moment
+        // after arriving, which reads as the jump having failed. Plays rather than seeking in place
+        // for the same reason — you tap a time in order to watch from there.
+        //
+        // Clamped at zero and guarded on a real number: this arrives as text through injected
+        // JavaScript, so nothing about the argument is guaranteed.
+        seek: function (seconds) {
+          var at = Math.max(0, Number(seconds));
+          if (!isFinite(at) || !ytPlayer) return;
+          cap = 0;
+          capped = false;
+          desired = 'play';
+          try { ytPlayer.seekTo(at, true); } catch (e) {}
+          startPlayback();
         }
       };
 
