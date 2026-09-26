@@ -27,6 +27,7 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 | **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
 | **Mobile** | React Native (Expo SDK 57, Expo Router v4, TypeScript strict) |
 | **Mobile state** | TanStack Query; end-to-end generated API types |
+| **Subscriptions** | App Store & Google Play billing through RevenueCat; entitlements held server-side |
 
 ## What it does
 
@@ -67,6 +68,13 @@ grouped query rather than cached in a column, wherever the thing being counted i
 — a counter column counts rows, and a row that is pending or withdrawn is not the same as one that is
 published. The cost is one query per page; the alternative is a number that is wrong in a way nothing
 detects.
+
+**Subscriptions the client cannot grant itself.** A paid tier raises daily allowances and lifts
+the saved-recipe cap. Every limit is enforced by the API from an entitlement the server copies from
+the billing provider, never from what the app reports, and every number is tunable at runtime from
+one place that maps a tier to its allowance. Access is stored as an expiry rather than a flag, so it
+lapses on schedule even if a notification from the store never arrives. Store screens (paywall,
+manage, restore) are the provider's own, which keeps payment UI out of the codebase entirely.
 
 **Background processing.** Work is split across dedicated queues so slow media and ingest work can
 never starve interactive requests. Jobs are idempotent, with retries on transient external failures
