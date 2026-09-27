@@ -69,8 +69,10 @@ grouped query rather than cached in a column, wherever the thing being counted i
 published. The cost is one query per page; the alternative is a number that is wrong in a way nothing
 detects.
 
-**Subscriptions the client cannot grant itself.** A paid tier raises daily allowances and lifts
-the saved-recipe cap. Every limit is enforced by the API from an entitlement the server copies from
+**Subscriptions the client cannot grant itself.** A paid tier raises daily allowances, lifts
+the saved-recipe cap and unlocks the full nutrition breakdown. The API withholds that breakdown
+from free accounts rather than the app hiding it; free users see the table's shape with its
+figures blurred. Every limit is enforced by the API from an entitlement the server copies from
 the billing provider, never from what the app reports, and every number is tunable at runtime from
 one place that maps a tier to its allowance. Access is stored as an expiry rather than a flag, so it
 lapses on schedule even if a notification from the store never arrives. Store screens (paywall,
