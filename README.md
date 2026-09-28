@@ -78,6 +78,11 @@ one place that maps a tier to its allowance. Access is stored as an expiry rathe
 lapses on schedule even if a notification from the store never arrives. Store screens (paywall,
 manage, restore) are the provider's own, which keeps payment UI out of the codebase entirely.
 
+**Privacy enforced in the payload, not the view.** A profile can show the recipes its owner saved
+most recently, behind an owner switch that defaults on. Switched off, the API returns nothing rather
+than the app declining to draw it. Each row also says whether the reader saved it too, so that
+answer is served per reader on its own request and never folded into the profile everyone shares.
+
 **Background processing.** Work is split across dedicated queues so slow media and ingest work can
 never starve interactive requests. Jobs are idempotent, with retries on transient external failures
 only.
