@@ -27,6 +27,7 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 | **CI/CD** | GitHub Actions: RSpec + RuboCop + Brakeman → auto-deploy on merge |
 | **Mobile** | React Native (Expo SDK 57, Expo Router v4, TypeScript strict) |
 | **Mobile state** | TanStack Query; end-to-end generated API types |
+| **Subscriptions** | App Store & Google Play billing through RevenueCat; entitlements held server-side |
 
 ## What it does
 
@@ -61,6 +62,26 @@ phrase, so an oyster mushroom is not a shellfish and rice flour is not gluten. C
 parsed from creators' own descriptions, which follow no agreed format and are validated against the
 video's runtime; where a video has none, the interface falls back to an estimate and says so rather
 than presenting arithmetic as a marked moment.
+
+**Aggregates that cannot drift.** Counts shown on cards are resolved once per page through a single
+grouped query rather than cached in a column, wherever the thing being counted is a moderated subset
+— a counter column counts rows, and a row that is pending or withdrawn is not the same as one that is
+published. The cost is one query per page; the alternative is a number that is wrong in a way nothing
+detects.
+
+**Subscriptions the client cannot grant itself.** A paid tier raises daily allowances, lifts
+the saved-recipe cap and unlocks the full nutrition breakdown. The API withholds that breakdown
+from free accounts rather than the app hiding it; free users see the table's shape with its
+figures blurred. Every limit is enforced by the API from an entitlement the server copies from
+the billing provider, never from what the app reports, and every number is tunable at runtime from
+one place that maps a tier to its allowance. Access is stored as an expiry rather than a flag, so it
+lapses on schedule even if a notification from the store never arrives. Store screens (paywall,
+manage, restore) are the provider's own, which keeps payment UI out of the codebase entirely.
+
+**Privacy enforced in the payload, not the view.** A profile can show the recipes its owner saved
+most recently, behind an owner switch that defaults on. Switched off, the API returns nothing rather
+than the app declining to draw it. Each row also says whether the reader saved it too, so that
+answer is served per reader on its own request and never folded into the profile everyone shares.
 
 **Background processing.** Work is split across dedicated queues so slow media and ingest work can
 never starve interactive requests. Jobs are idempotent, with retries on transient external failures
