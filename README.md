@@ -34,7 +34,9 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 Photograph a fridge or cupboard → ingredient detection → ranked recipe matches → a recipe with a
 guided cooking walkthrough you can jump around in, step by step. Around that: a ranked home feed,
 search and browse, saved and history views, cuisine and dietary preferences, cooks' profiles,
-follows, comments and likes, push notifications, and full account management.
+follows, comments and likes, push notifications, and full account management. A News tab carries
+chef, restaurant and cooking stories from publishers and chefs' own accounts worldwide, each with its
+own likes and comment thread.
 
 Shipped to TestFlight on iOS.
 
@@ -82,6 +84,14 @@ manage, restore) are the provider's own, which keeps payment UI out of the codeb
 most recently, behind an owner switch that defaults on. Switched off, the API returns nothing rather
 than the app declining to draw it. Each row also says whether the reader saved it too, so that
 answer is served per reader on its own request and never folded into the profile everyone shares.
+
+**Third-party content as data, never as markup.** News arrives from dozens of public feeds the app
+does not control, so everything in one is treated as untrusted: it is reduced to plain text before it
+is stored, links and images are admitted only in a safe form, and fetching itself is bounded in size,
+time and destination. Sources, filters and the chefs a story can be tagged with live in reviewed
+configuration rather than the database, and a story is a link to the publisher's own page with its
+excerpt, never a copy of the article. Stories nobody reacted to age out, so the table holds about a
+month of news plus whatever people are still talking about.
 
 **Background processing.** Work is split across dedicated queues so slow media and ingest work can
 never starve interactive requests. Jobs are idempotent, with retries on transient external failures
