@@ -93,9 +93,12 @@ configuration rather than the database, and a story is a link to the publisher's
 excerpt, never a copy of the article. Stories nobody reacted to age out, so the table holds about a
 month of news plus whatever people are still talking about.
 
-**Background processing.** Work is split across dedicated queues so slow media and ingest work can
-never starve interactive requests. Jobs are idempotent, with retries on transient external failures
-only.
+**Background processing.** Queues are named for who is waiting: a scan someone is watching outranks
+moderation, follower fan-out and recipe ingestion, weighted so nothing starves. Push delivery runs on
+its own Sidekiq capsule, one provider request per job so a retry can only repeat what was refused,
+and delivery receipts are read back to forget uninstalled devices. Notifications that only announce
+something count toward no badge and expire; ones that are owed a response opt in to the badge. Jobs
+are idempotent, with retries on transient external failures only.
 
 **Infrastructure as code.** Terraform manages the whole AWS stack with remote state, exercised
 locally against an emulator before it reaches a real account. Kamal handles zero-downtime container
