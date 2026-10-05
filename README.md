@@ -32,8 +32,11 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 ## What it does
 
 Photograph a fridge or cupboard → ingredient detection → ranked recipe matches → a recipe with a
-guided cooking walkthrough you can jump around in, step by step. Around that: a ranked home feed,
-search and browse, saved and history views, cuisine and dietary preferences, cooks' profiles,
+guided cooking walkthrough you can jump around in, step by step. Around that: a ranked home feed
+that mixes recipes, other cooks' matches and the photos they post of what they cooked, ranked by how
+well each dish fits what you have and like, and freshly shuffled when you come back to it; search and
+browse, with creators filterable by cuisine and diet; saved and history views, cuisine and dietary
+preferences, cooks' profiles,
 follows, comments and likes, push notifications, and full account management. A News tab carries
 chef, restaurant and cooking stories from publishers and chefs' own accounts worldwide, each with its
 own likes and comment thread.
