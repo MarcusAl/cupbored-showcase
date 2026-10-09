@@ -33,7 +33,7 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 
 Photograph a fridge or cupboard → ingredient detection → ranked recipe matches → a recipe with a
 guided cooking walkthrough you can jump around in, step by step. Around that: a ranked home feed,
-search and browse, saved and history views, cuisine and dietary preferences, cooks' profiles,
+search (several ingredients at once) and browse, saved and history views, cuisine and dietary preferences, cooks' profiles,
 follows, comments and likes, push notifications, and full account management.
 
 Shipped to TestFlight on iOS.
