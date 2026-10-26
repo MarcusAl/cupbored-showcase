@@ -113,16 +113,11 @@ or an image. Datastores sit on private subnets with no public access. Static ana
 under a zero-warning, no-suppressions policy. Specifics are deliberately not documented here.
 
 **Nutrition worked out the way a food lab does it.** Each recipe's figures follow the standard
-recipe-calculation method (EuroFIR, USDA): count what is eaten, not what goes in the pan, and weigh the
-finished dish rather than guessing it. A model reads each ingredient line once and says what happens to
-it — eaten, discarded (a marinade, the pasta water), a side, or the oil something is fried in — and how
-it is cooked; published cooking factors then give the finished weight, frying oil counts only as the fat
-the food takes up, and a starch weighed dry is costed as the dry food. Diet foods ("zero calorie syrup")
-can never be costed as the plain version. What still looks wrong is caught by checks that read stored
-data only, and fixed as reviewed data kept in git: one corrected food fixes every recipe that names it,
-and recalculating is free arithmetic, so accuracy compounds instead of being re-fought prompt by prompt.
-The method was judged on a stratified sample hand-checked against the videos, as well as on recipes whose
-creators state their calories, and re-running the corpus on it is batched, snapshotted and reversible.
+published recipe-calculation approach (EuroFIR, USDA), counting what is eaten and working from the
+weight of the finished dish rather than a guess. Checks that read only stored data flag figures that
+look wrong, and the fixes are reviewed data kept under version control, so one correction applies to
+every recipe it touches and recalculating costs nothing. The result was validated against a
+hand-checked sample, and any re-run across the whole corpus is batched and reversible.
 
 ## CI Pipeline
 
