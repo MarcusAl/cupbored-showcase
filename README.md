@@ -32,9 +32,14 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 ## What it does
 
 Photograph a fridge or cupboard → ingredient detection → ranked recipe matches → a recipe with a
-guided cooking walkthrough you can jump around in, step by step. Around that: a ranked home feed,
-search (several ingredients at once) and browse, saved and history views, cuisine and dietary preferences, cooks' profiles,
-follows, comments and likes, push notifications, and full account management.
+guided cooking walkthrough you can jump around in, step by step. Around that: a ranked home feed
+that mixes recipes, other cooks' matches and the photos they post of what they cooked, ranked by how
+well each dish fits what you have and like, and freshly shuffled when you come back to it; search
+(several ingredients at once) and browse, with creators filterable by cuisine and diet; saved and history views, cuisine and dietary
+preferences, cooks' profiles,
+follows, comments and likes, push notifications, and full account management. A News tab carries
+chef, restaurant and cooking stories from publishers and chefs' own accounts worldwide, each with its
+own likes and comment thread.
 
 Shipped to TestFlight on iOS.
 
@@ -83,9 +88,20 @@ most recently, behind an owner switch that defaults on. Switched off, the API re
 than the app declining to draw it. Each row also says whether the reader saved it too, so that
 answer is served per reader on its own request and never folded into the profile everyone shares.
 
-**Background processing.** Work is split across dedicated queues so slow media and ingest work can
-never starve interactive requests. Jobs are idempotent, with retries on transient external failures
-only.
+**Third-party content as data, never as markup.** News arrives from dozens of public feeds the app
+does not control, so everything in one is treated as untrusted: it is reduced to plain text before it
+is stored, links and images are admitted only in a safe form, and fetching itself is bounded in size,
+time and destination. Sources, filters and the chefs a story can be tagged with live in reviewed
+configuration rather than the database, and a story is a link to the publisher's own page with its
+excerpt, never a copy of the article. Stories nobody reacted to age out, so the table holds about a
+month of news plus whatever people are still talking about.
+
+**Background processing.** Queues are named for who is waiting: a scan someone is watching outranks
+moderation, follower fan-out and recipe ingestion, weighted so nothing starves. Push delivery runs on
+its own Sidekiq capsule, one provider request per job so a retry can only repeat what was refused,
+and delivery receipts are read back to forget uninstalled devices. Notifications that only announce
+something count toward no badge and expire; ones that are owed a response opt in to the badge. Jobs
+are idempotent, with retries on transient external failures only.
 
 **Infrastructure as code.** Terraform manages the whole AWS stack with remote state, exercised
 locally against an emulator before it reaches a real account. Kamal handles zero-downtime container
