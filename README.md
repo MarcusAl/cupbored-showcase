@@ -112,6 +112,13 @@ are only reachable through scoped queries. Secrets live in managed secure storag
 or an image. Datastores sit on private subnets with no public access. Static analysis gates every PR
 under a zero-warning, no-suppressions policy. Specifics are deliberately not documented here.
 
+**Nutrition worked out the way a food lab does it.** Each recipe's figures follow the standard
+published recipe-calculation approach (EuroFIR, USDA), counting what is eaten and working from the
+weight of the finished dish rather than a guess. Checks that read only stored data flag figures that
+look wrong, and the fixes are reviewed data kept under version control, so one correction applies to
+every recipe it touches and recalculating costs nothing. The result was validated against a
+hand-checked sample, and any re-run across the whole corpus is batched and reversible.
+
 ## CI Pipeline
 
 GitHub Actions on every PR and merge.
