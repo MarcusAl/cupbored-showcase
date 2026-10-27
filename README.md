@@ -4,12 +4,10 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 
 > Source is in a private repository. This page is a summary of the stack and the engineering practices behind it. Implementation details, algorithms and the API surface are deliberately not published.
 
-<img width="180" alt="Screenshot 2026-08-28 at 17 38 20" src="https://github.com/user-attachments/assets/b6f4ed64-67ac-4c4a-870b-f20e3ff37593" />
-<img width="180" alt="Screenshot 2026-08-28 at 17 36 03" src="https://github.com/user-attachments/assets/562a4bcc-e1df-4cb5-8059-0f0cc75e44ee" />
-<img width="180" alt="Screenshot 2026-08-28 at 17 36 30" src="https://github.com/user-attachments/assets/4af67307-3eb0-4622-baba-667d81b44e73" />
-<img width="180" alt="Screenshot 2026-08-28 at 17 37 24" src="https://github.com/user-attachments/assets/39a3fbf0-add2-4534-a56c-b5eccebd3a74" />
-<img width="180" alt="Screenshot 2026-08-28 at 17 38 51" src="https://github.com/user-attachments/assets/90aa7a50-7c4d-4e5b-808d-83567c32d591" />
-<img width="180" alt="Screenshot 2026-08-28 at 17 39 51" src="https://github.com/user-attachments/assets/1bc6ec5e-8d75-4248-9b4b-0b1d96222a58" />
+<img width="180" alt="Screenshot 2026-10-27 at 12 29 00" src="https://github.com/user-attachments/assets/c580b500-1e3a-42b9-a49c-7f9d31d0c7f3" />
+<img width="180" alt="Screenshot 2026-10-27 at 12 30 14" src="https://github.com/user-attachments/assets/48e579ef-71f6-4b89-8ff0-7357a7140132" />
+<img width="180" alt="Screenshot 2026-10-27 at 12 32 05" src="https://github.com/user-attachments/assets/a8f401d3-cb8b-4283-8e16-1868b962721c" />
+
 
 ## Tech Stack
 
