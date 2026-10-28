@@ -70,11 +70,12 @@ function boot(query) {
     clearInterval,
     console,
     YT: {
-      PlayerState: { PLAYING: 'PLAYING', BUFFERING: 'BUFFERING', PAUSED: 'PAUSED' },
+      PlayerState: { PLAYING: 'PLAYING', BUFFERING: 'BUFFERING', PAUSED: 'PAUSED', ENDED: 'ENDED' },
       // A `function`, not a shorthand method: the page calls `new YT.Player(...)`, and a shorthand
       // method is not constructible — it throws, the page's own catch posts `ready` from its
       // API-failed fallback, and every assertion about the ticker quietly fails for the wrong reason.
       Player: function (_id, options) {
+        player.events = options.events;
         // Ready on the next tick, as the real API is: the page must cope with commands that arrive
         // before the player exists, and calling onReady synchronously would hide that.
         setTimeout(() => options.events.onReady(), 0);
@@ -251,6 +252,42 @@ test('refuses anything that is not a real video id', async () => {
 
   assert.equal(iframe.src, '');
   assert.deepEqual(posted, [{ type: 'error', code: 'invalid_id' }]);
+});
+
+// ── playback state ─────────────────────────────────────────────────────────
+
+const states = (posted) => posted.filter((m) => m.type === 'state').map((m) => m.playing);
+
+test('reports playback starting and pausing', async () => {
+  const { posted, player } = boot('?v=abcdefghijk&mute=0');
+  await settle(10);
+
+  player.events.onStateChange({ data: 'PLAYING' });
+  player.events.onStateChange({ data: 'PAUSED' });
+
+  assert.deepEqual(states(posted), [true, false]);
+});
+
+test('reports the end of the video as not playing', async () => {
+  const { posted, player } = boot('?v=abcdefghijk&mute=0');
+  await settle(10);
+
+  player.events.onStateChange({ data: 'PLAYING' });
+  player.events.onStateChange({ data: 'ENDED' });
+
+  assert.deepEqual(states(posted), [true, false]);
+});
+
+// A re-buffer mid-playback is not a pause, so it must not toggle the app's chrome.
+test('treats buffering as still playing and posts no repeat', async () => {
+  const { posted, player } = boot('?v=abcdefghijk&mute=0');
+  await settle(10);
+
+  player.events.onStateChange({ data: 'PLAYING' });
+  player.events.onStateChange({ data: 'BUFFERING' });
+  player.events.onStateChange({ data: 'PLAYING' });
+
+  assert.deepEqual(states(posted), [true]);
 });
 
 // ── run ────────────────────────────────────────────────────────────────────

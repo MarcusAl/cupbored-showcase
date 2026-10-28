@@ -20,7 +20,7 @@
     `loop(from, to)` repeats one step's section of the video. It is
     intentionally tiny and
     self-contained — the only third-party scripts are YouTube's own, the video id is strictly validated
-    before it touches the embed URL, and the page can only post {type:'ready'|'error'} back to the app.
+    before it touches the embed URL, and the page can only post {type:'ready'|'error'|'audio'|'time'|'capped'|'state'} back to the app.
   -->
   <iframe id="yt" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
   <script>
@@ -326,6 +326,8 @@
         }
       };
 
+      var lastRunning = false;
+
       window.onYouTubeIframeAPIReady = function () {
         try {
           ytPlayer = new YT.Player('yt', {
@@ -345,6 +347,16 @@
                   desired = 'play';
                   startPlayback();
                 }
+              },
+              // Whether the video is running, every time that changes, so the app can quieten its
+              // chrome during playback and restore it on pause or end. Buffering counts as running:
+              // it is a stall inside playback, and reporting it as a pause would flicker the chrome
+              // on every re-buffer. Only changes are posted, never repeats.
+              onStateChange: function (e) {
+                var running = e && (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING);
+                if (running === lastRunning) return;
+                lastRunning = running;
+                post({ type: 'state', playing: running });
               },
               onError: function (e) { post({ type: 'error', code: e && e.data }); }
             }
