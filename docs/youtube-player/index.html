@@ -353,7 +353,7 @@
               // it is a stall inside playback, and reporting it as a pause would flicker the chrome
               // on every re-buffer. Only changes are posted, never repeats.
               onStateChange: function (e) {
-                var running = e && (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING);
+                var running = !!(e && (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING));
                 if (running === lastRunning) return;
                 lastRunning = running;
                 post({ type: 'state', playing: running });
