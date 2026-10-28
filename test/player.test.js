@@ -252,6 +252,7 @@ test('asks the embed for no fullscreen button', async () => {
   const { iframe } = boot('?v=abcdefghijk&mute=1');
 
   assert.ok(iframe.src.includes('fs=0'), iframe.src);
+  assert.ok(iframe.src.includes('iv_load_policy=3'), iframe.src);
 });
 
 test('refuses anything that is not a real video id', async () => {
