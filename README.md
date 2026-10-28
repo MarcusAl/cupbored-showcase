@@ -94,6 +94,13 @@ configuration rather than the database, and a story is a link to the publisher's
 excerpt, never a copy of the article. Stories nobody reacted to age out, so the table holds about a
 month of news plus whatever people are still talking about.
 
+**One player, one frame.** A recipe's video lives in a single fixed slot at the top of its page,
+showing the poster until someone presses play, so starting the video moves nothing on the page. The
+same player instance carries on through cook mode and back, with its position, pause state and captions
+intact, and every sheet that opens over the recipe (steps, comments, photo prompts) is bounded by one
+measurement of where that slot ends, so none of them can cover the video while it plays. The
+embedded player reports when it is playing, and only the controls laid over the video recede.
+
 **Background processing.** Queues are named for who is waiting: a scan someone is watching outranks
 moderation, follower fan-out and recipe ingestion, weighted so nothing starves. Push delivery runs on
 its own Sidekiq capsule, one provider request per job so a retry can only repeat what was refused,
