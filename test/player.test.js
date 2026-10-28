@@ -247,6 +247,13 @@ test('never puts the limit in the embed URL', async () => {
   assert.ok(!iframe.src.includes('cap='), iframe.src);
 });
 
+// The WebView cannot present YouTube's fullscreen, so its button was a control that did nothing.
+test('asks the embed for no fullscreen button', async () => {
+  const { iframe } = boot('?v=abcdefghijk&mute=1');
+
+  assert.ok(iframe.src.includes('fs=0'), iframe.src);
+});
+
 test('refuses anything that is not a real video id', async () => {
   const { posted, iframe } = boot('?v=../../evil&mute=1');
 
