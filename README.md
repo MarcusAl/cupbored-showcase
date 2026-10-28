@@ -97,8 +97,8 @@ month of news plus whatever people are still talking about.
 **One player, one frame.** A recipe's video lives in a single fixed slot at the top of its page,
 showing the poster until someone presses play, so starting the video moves nothing on the page. The
 same player instance carries on through cook mode and back, with its position, pause state and captions
-intact, and every sheet that opens over the recipe (steps, comments, photo prompts) is bounded by one
-measurement of where that slot ends, so none of them can cover the video while it plays. The
+intact, and every sheet that opens over the recipe (steps, comments, photo prompts) is bounded by the
+one value that positions that slot, so none of them can cover the video while it plays. The
 embedded player reports when it is playing, and only the controls laid over the video recede.
 
 **Background processing.** Queues are named for who is waiting: a scan someone is watching outranks
