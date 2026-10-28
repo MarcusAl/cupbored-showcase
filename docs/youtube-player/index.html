@@ -82,7 +82,11 @@
         'https://www.youtube.com/embed/' + id +
         '?autoplay=' + autoplay + '&mute=' + mute +
         (startAt ? '&start=' + startAt : '') +
-        '&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=' + encodeURIComponent(origin);
+        // fs=0: no fullscreen button. The app's WebView cannot present YouTube fullscreen, so the button
+        // did nothing; the app gives the video the whole screen itself by turning the phone sideways.
+        // iv_load_policy=3: no video annotations over the walkthrough.
+        '&playsinline=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1&enablejsapi=1&origin=' +
+        encodeURIComponent(origin);
 
       // Attach the IFrame API to the already-autoplaying iframe purely to surface ready/error to the app.
       var tag = document.createElement('script');
