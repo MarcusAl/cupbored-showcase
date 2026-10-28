@@ -101,6 +101,15 @@ intact, and every sheet that opens over the recipe (steps, comments, photo promp
 one value that positions that slot, so none of them can cover the video while it plays. The
 embedded player reports when it is playing, and only the controls laid over the video recede.
 
+**Five equal tabs.** Navigation is five equal slots with a word under every icon, and starting a match
+is one of them rather than a raised button. The scan tab's mark is a small glossy ball: three vector
+layers moved only by transforms on the native animation driver, from a single animated value. It plays
+two short cycles when the bar comes into view, then one every fifteen seconds while it stays there,
+and it is still under Reduce Motion, in the background, or while another screen covers the tabs. On a
+low-end Android phone a moving cycle redraws at full frame rate within budget, so it moves about a fifth
+of the time rather than looping, and a control that is on screen all session rests in between. How many matches are left today moved off the bar and into the
+camera, the one place it changes what someone does next.
+
 **Background processing.** Queues are named for who is waiting: a scan someone is watching outranks
 moderation, follower fan-out and recipe ingestion, weighted so nothing starves. Push delivery runs on
 its own Sidekiq capsule, one provider request per job so a retry can only repeat what was refused,
