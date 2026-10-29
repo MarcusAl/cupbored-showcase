@@ -94,6 +94,32 @@ configuration rather than the database, and a story is a link to the publisher's
 excerpt, never a copy of the article. Stories nobody reacted to age out, so the table holds about a
 month of news plus whatever people are still talking about.
 
+**One player, one frame.** A recipe's video lives in a single fixed slot at the top of its page,
+showing the poster until someone presses play, so starting the video moves nothing on the page. The
+same player instance carries on through cook mode and back, with its position, pause state and captions
+intact, and every sheet that opens over the recipe (steps, comments, photo prompts) is bounded by the
+one value that positions that slot, so none of them can cover the video while it plays. The
+embedded player reports when it is playing, and only the controls laid over the video recede.
+
+**Five equal tabs.** Navigation is five equal slots with a word under every icon, and starting a match
+is one of them rather than a raised button. The scan tab's mark is a small glossy ball: three vector
+layers moved only by transforms on the native animation driver, from a single animated value. It plays
+two short cycles when the bar comes into view, then one every fifteen seconds while it stays there,
+and it is still under Reduce Motion, in the background, or while another screen covers the tabs. On a
+low-end Android phone a moving cycle redraws at full frame rate within budget, so it moves about a fifth
+of the time rather than looping, and a control that is on screen all session rests in between. How many matches are left today moved off the bar and into the
+camera, the one place it changes what someone does next.
+
+**Illustrations that arrive once.** Onboarding and every empty state draw from one illustration set:
+vector drawings authored separately for light and dark, each in four layers that an import script
+lifts out of the designer's files untouched. One component plays a single short entrance on the native
+animation driver (the background unfolds, the subject settles, an accent travels in on its own arc),
+then holds still; nothing loops, and under Reduce Motion it is simply there. Drawings on pager pages
+wait for their page: a page counts as active the moment a tap starts its slide, so an entrance that
+started then would finish unseen behind the slide, and instead it waits for the page to land. Empty
+states keep their meanings apart, so no results, a failed load and a quiet feed never share a picture,
+and the art shrinks on small screens while the text keeps the reader's size.
+
 **Background processing.** Queues are named for who is waiting: a scan someone is watching outranks
 moderation, follower fan-out and recipe ingestion, weighted so nothing starves. Push delivery runs on
 its own Sidekiq capsule, one provider request per job so a retry can only repeat what was refused,
