@@ -110,6 +110,16 @@ low-end Android phone a moving cycle redraws at full frame rate within budget, s
 of the time rather than looping, and a control that is on screen all session rests in between. How many matches are left today moved off the bar and into the
 camera, the one place it changes what someone does next.
 
+**Illustrations that arrive once.** Onboarding and every empty state draw from one illustration set:
+vector drawings authored separately for light and dark, each in four layers that an import script
+lifts out of the designer's files untouched. One component plays a single short entrance on the native
+animation driver (the background unfolds, the subject settles, an accent travels in on its own arc),
+then holds still; nothing loops, and under Reduce Motion it is simply there. Drawings on pager pages
+wait for their page: a page counts as active the moment a tap starts its slide, so an entrance that
+started then would finish unseen behind the slide, and instead it waits for the page to land. Empty
+states keep their meanings apart, so no results, a failed load and a quiet feed never share a picture,
+and the art shrinks on small screens while the text keeps the reader's size.
+
 **Background processing.** Queues are named for who is waiting: a scan someone is watching outranks
 moderation, follower fan-out and recipe ingestion, weighted so nothing starves. Push delivery runs on
 its own Sidekiq capsule, one provider request per job so a retry can only repeat what was refused,
