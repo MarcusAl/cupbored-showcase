@@ -4,9 +4,10 @@ A full-stack social recipe iOS/Android app: photograph your fridge or cupboard, 
 
 > Source is in a private repository. This page is a summary of the stack and the engineering practices behind it. Implementation details, algorithms and the API surface are deliberately not published.
 
-<img width="180" alt="Screenshot 2026-10-27 at 12 29 00" src="https://github.com/user-attachments/assets/c580b500-1e3a-42b9-a49c-7f9d31d0c7f3" />
-<img width="180" alt="Screenshot 2026-10-27 at 12 30 14" src="https://github.com/user-attachments/assets/48e579ef-71f6-4b89-8ff0-7357a7140132" />
-<img width="180" alt="Screenshot 2026-10-27 at 12 32 05" src="https://github.com/user-attachments/assets/a8f401d3-cb8b-4283-8e16-1868b962721c" />
+<img width="180" alt="Screenshot 2026-10-29 at 21 11 39" src="https://github.com/user-attachments/assets/3ecf7460-83b6-4c9c-a7fe-0a1d7783e845" />
+<img width="180" alt="Screenshot 2026-10-29 at 21 11 11" src="https://github.com/user-attachments/assets/19345653-3447-44ff-8007-91024b46769a" />
+<img width="180" alt="Screenshot 2026-10-29 at 21 10 09" src="https://github.com/user-attachments/assets/3c5579cd-1003-458d-9d04-daa213afdb73" />
+
 
 
 ## Tech Stack
